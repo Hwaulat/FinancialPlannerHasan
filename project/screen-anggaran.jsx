@@ -38,9 +38,14 @@ function BudgetTab({ hidden, budgets, onSetBudget }) {
   const m = v => hidden ? '••••' : v;
 
   const handleBudget = () => {
-    const cat = window.prompt('Kategori budget');
-    const amount = Number(window.prompt('Jumlah budget (angka)'));
-    if (cat && !Number.isNaN(amount) && onSetBudget) onSetBudget(cat, amount);
+    (async () => {
+      const cat = await window.UI.prompt('Kategori budget');
+      if (cat === null) return;
+      const amountStr = await window.UI.prompt('Jumlah budget (angka)');
+      if (amountStr === null) return;
+      const amount = Number(amountStr);
+      if (cat && !Number.isNaN(amount) && onSetBudget) onSetBudget(cat, amount);
+    })();
   };
 
   return (
@@ -74,7 +79,7 @@ function BudgetTab({ hidden, budgets, onSetBudget }) {
           </window.Card>
         );
       })}
-      <button onClick={handleBudget} className="press" style={ctaGhost}><Icon name="settings" size={18} stroke={2.2} />Atur Budget</button>
+      <window.Button variant="ghost" onClick={handleBudget} style={{ width:'100%', justifyContent:'center' }}><Icon name="settings" size={18} stroke={2.2} />Atur Budget</window.Button>
     </div>
   );
 }
@@ -86,12 +91,19 @@ function BillsTab({ hidden, bills, onToggleBill, onDeleteBill, onAddBill }) {
   const sorted = [...bills].sort((a,b)=> (a.status===b.status) ? a.due_day - b.due_day : a.status==='unpaid'?-1:1);
 
   const handleAdd = () => {
-    const name = window.prompt('Nama tagihan');
-    const dueDay = Number(window.prompt('Tanggal jatuh tempo'));
-    const amount = Number(window.prompt('Jumlah tagihan')); 
-    if (name && !Number.isNaN(dueDay) && !Number.isNaN(amount) && onAddBill) {
-      onAddBill({ name, due_day: dueDay, amount, status:'unpaid', month: '' });
-    }
+    (async () => {
+      const name = await window.UI.prompt('Nama tagihan');
+      if (name === null) return;
+      const dueStr = await window.UI.prompt('Tanggal jatuh tempo');
+      if (dueStr === null) return;
+      const dueDay = Number(dueStr);
+      const amountStr = await window.UI.prompt('Jumlah tagihan');
+      if (amountStr === null) return;
+      const amount = Number(amountStr);
+      if (name && !Number.isNaN(dueDay) && !Number.isNaN(amount) && onAddBill) {
+        onAddBill({ name, due_day: dueDay, amount, status:'unpaid', month: '' });
+      }
+    })();
   };
 
   return (
@@ -115,20 +127,19 @@ function BillsTab({ hidden, bills, onToggleBill, onDeleteBill, onAddBill }) {
                 </div>
               </div>
               <div className="num" style={{ fontSize:13.5, fontWeight:800, color:'var(--text)' }}>{m(formatRp(b.amount))}</div>
-              <button onClick={()=>onToggleBill?.(b)} className="press" aria-label="toggle" style={{
-                border:'none', cursor:'pointer', borderRadius:99, padding:'5px 11px',
-                fontFamily:'inherit', fontSize:11.5, fontWeight:700, display:'flex', alignItems:'center', gap:4,
+              <window.Button variant="ghost" onClick={()=>onToggleBill?.(b)} aria-label="toggle" style={{
+                borderRadius:99, padding:'5px 11px', fontSize:11.5, fontWeight:700, display:'flex', alignItems:'center', gap:4,
                 background: paidB ? 'var(--income-soft)' : 'var(--surface-3)',
                 color: paidB ? 'var(--income)' : 'var(--text-3)', transition:'all .2s',
               }}>
                 {paidB && <Icon name="check" size={13} stroke={3} />}{paidB?'Lunas':'Bayar'}
-              </button>
-              <button onClick={()=>onDeleteBill?.(b.id)} className="press" style={{ border:'none', background:'transparent', color:'var(--spending)', cursor:'pointer' }}><Icon name="trash" size={16} stroke={2.2} /></button>
+              </window.Button>
+              <window.IconButton onClick={()=>onDeleteBill?.(b.id)} icon="trash" ariaLabel="Hapus Tagihan" style={{ background:'var(--surface)', color:'var(--spending)' }} />
             </div>
           );
         })}
       </window.Card>
-      <button onClick={handleAdd} className="press" style={ctaGhost}><Icon name="plus" size={18} stroke={2.4} />Tambah Tagihan</button>
+      <window.Button variant="ghost" onClick={handleAdd} style={{ width:'100%', justifyContent:'center' }}><Icon name="plus" size={18} stroke={2.4} />Tambah Tagihan</window.Button>
     </div>
   );
 }
@@ -139,51 +150,67 @@ function DebtTab({ hidden, debts, onAddDebt, onUpdateDebt, onDeleteDebt }) {
   const m = v => hidden ? '••••' : v;
 
   const handleAdd = () => {
-    const name = window.prompt('Nama utang');
-    const total = Number(window.prompt('Total utang')); 
-    if (name && !Number.isNaN(total) && onAddDebt) {
-      onAddDebt({ name, total, paid: 0, icon:'hand' });
-    }
+    (async () => {
+      const name = await window.UI.prompt('Nama utang');
+      if (name === null) return;
+      const totalStr = await window.UI.prompt('Total utang');
+      if (totalStr === null) return;
+      const total = Number(totalStr);
+      if (name && !Number.isNaN(total) && onAddDebt) {
+        onAddDebt({ name, total, paid: 0, icon:'hand' });
+      }
+    })();
   };
+
+  function DebtItem({ d }) {
+    const [input, setInput] = React.useState('');
+    const pct = d.total ? Math.round(d.paid/d.total*100) : 0;
+    const m = v => hidden ? '••••' : v;
+    return (
+      <window.Card key={d.id} pad={16} className="lift">
+        <div style={{ display:'flex', alignItems:'center', gap:11, marginBottom:13 }}>
+          <window.CatIcon cat={d.name} size={40} color="var(--goals)" icon={catMeta(d.name).icon} />
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:14.5, fontWeight:700, color:'var(--text)' }}>{d.name}</div>
+            <div className="num" style={{ fontSize:12, color:'var(--text-3)', marginTop:2 }}>Total {m(formatRp(d.total))}</div>
+          </div>
+          <div style={{ fontSize:14, fontWeight:800, color:'var(--goals)' }}>{pct}%</div>
+        </div>
+        <ProgressBar pct={pct} color="var(--goals)" delay={0} />
+        <div style={{ display:'flex', justifyContent:'space-between', marginTop:10 }}>
+          <span className="num" style={{ fontSize:12, color:'var(--text-3)' }}>Terbayar <b style={{color:'var(--income)'}}>{m(formatRp(d.paid))}</b></span>
+          <span className="num" style={{ fontSize:12, color:'var(--text-3)' }}>Sisa <b style={{color:'var(--text)'}}>{m(formatRp(d.total-d.paid))}</b></span>
+        </div>
+        <div style={{ display:'flex', gap:8, marginTop:14, alignItems:'center' }}>
+          <input value={input} onChange={e=>setInput(e.target.value.replace(/[^0-9]/g,''))} placeholder='Nominal bayar' 
+            style={{ flex:1, height:44, padding:'0 12px', borderRadius:12, border:'1px solid var(--border)', background:'var(--surface-2)', fontFamily:'inherit' }} />
+          <window.Button variant="primary" onClick={() => {
+            const val = Number(input);
+            const amount = Math.round(val);
+            const payment = Math.min(amount, d.total - d.paid);
+            if (!Number.isNaN(payment) && payment > 0) {
+              const newPaid = d.paid + payment;
+              onUpdateDebt?.(d.id, newPaid, payment);
+              setInput('');
+            }
+          }} style={{ minWidth:120, padding:'11px 14px' }}><Icon name="wallet" size={16} stroke={2.2} />Bayar</window.Button>
+          <window.IconButton onClick={()=>onDeleteDebt?.(d.id)} icon="trash" ariaLabel="Hapus Utang" style={{ background:'var(--spending-soft)', color:'var(--spending)' }} />
+        </div>
+      </window.Card>
+    );
+  }
 
   return (
     <div className="stagger" style={{ display:'flex', flexDirection:'column', gap:14 }}>
       <SummaryStrip items={[
-        { label:'Total Utang', value:m(formatRpShort(total)) },
-        { label:'Terbayar', value:m(formatRpShort(paid)), color:'var(--income)' },
-        { label:'Sisa', value:m(formatRpShort(total-paid)), color:'var(--spending)' },
+        { label:'Total Utang', value:m(formatRp(total)) },
+        { label:'Terbayar', value:m(formatRp(paid)), color:'var(--income)' },
+        { label:'Sisa', value:m(formatRp(total-paid)), color:'var(--spending)' },
       ]} />
-      {debts.map((d,i)=>{
-        const pct = d.total ? Math.round(d.paid/d.total*100) : 0;
-        return (
-          <window.Card key={d.id} pad={16} className="lift">
-            <div style={{ display:'flex', alignItems:'center', gap:11, marginBottom:13 }}>
-              <window.CatIcon cat={d.name} size={40} color="var(--goals)" icon={catMeta(d.name).icon} />
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:14.5, fontWeight:700, color:'var(--text)' }}>{d.name}</div>
-                <div className="num" style={{ fontSize:12, color:'var(--text-3)', marginTop:2 }}>Total {m(formatRp(d.total))}</div>
-              </div>
-              <div style={{ fontSize:14, fontWeight:800, color:'var(--goals)' }}>{pct}%</div>
-            </div>
-            <ProgressBar pct={pct} color="var(--goals)" delay={i*0.05} />
-            <div style={{ display:'flex', justifyContent:'space-between', marginTop:10 }}>
-              <span className="num" style={{ fontSize:12, color:'var(--text-3)' }}>Terbayar <b style={{color:'var(--income)'}}>{m(formatRp(d.paid))}</b></span>
-              <span className="num" style={{ fontSize:12, color:'var(--text-3)' }}>Sisa <b style={{color:'var(--text)'}}>{m(formatRp(d.total-d.paid))}</b></span>
-            </div>
-            <div style={{ display:'flex', gap:8, marginTop:14 }}>
-              <button onClick={() => {
-                const val = Number(window.prompt('Masukkan nominal pembayaran (angka)'));
-                if (!Number.isNaN(val) && val > 0) {
-                  const newPaid = Math.min(d.total, d.paid + Math.round(val));
-                  onUpdateDebt?.(d.id, newPaid);
-                }
-              }} className="press" style={{ ...payBtn, flex:1 }}><Icon name="wallet" size={16} stroke={2.2} />Bayar</button>
-              <button onClick={()=>onDeleteDebt?.(d.id)} className="press" style={{ border:'none', background:'var(--spending-soft)', color:'var(--spending)', borderRadius:13, padding:'11px' }}><Icon name="trash" size={16} stroke={2.2} /></button>
-            </div>
-          </window.Card>
-        );
-      })}
-      <button onClick={handleAdd} className="press" style={ctaGhost}><Icon name="plus" size={18} stroke={2.4} />Tambah Utang</button>
+      {debts.map((d)=> (
+        <DebtItem key={d.id} d={d} />
+      ))}
+      <window.Button variant="ghost" onClick={handleAdd} style={{ width:'100%', justifyContent:'center' }}><Icon name="plus" size={18} stroke={2.4} />Tambah Utang</window.Button>
     </div>
   );
 }
@@ -200,11 +227,16 @@ function GoalsTab({ hidden, goals, onAddGoal, onUpdateGoal, onDeleteGoal }) {
   }
 
   const handleAdd = () => {
-    const name = window.prompt('Nama goal');
-    const target = Number(window.prompt('Target nominal')); 
-    if (name && !Number.isNaN(target) && onAddGoal) {
-      onAddGoal({ name, target, progress: 0, icon:'flag', unit:'rp' });
-    }
+    (async () => {
+      const name = await window.UI.prompt('Nama goal');
+      if (name === null) return;
+      const targetStr = await window.UI.prompt('Target nominal');
+      if (targetStr === null) return;
+      const target = Number(targetStr);
+      if (name && !Number.isNaN(target) && onAddGoal) {
+        onAddGoal({ name, target, progress: 0, icon:'flag', unit:'rp' });
+      }
+    })();
   };
 
   return (
@@ -231,13 +263,13 @@ function GoalsTab({ hidden, goals, onAddGoal, onUpdateGoal, onDeleteGoal }) {
               </div>
             </div>
             <div style={{ display:'flex', gap:8, marginTop:14 }}>
-              {!done && <button onClick={()=>addFunds(g)} className="press" style={{ ...payBtn, flex:1, background:'var(--goals-soft)', color:'var(--goals)' }}><Icon name="plus" size={16} stroke={2.4} />Tambah Dana</button>}
-              <button onClick={()=>onDeleteGoal?.(g.id)} className="press" style={{ border:'none', background:'var(--spending-soft)', color:'var(--spending)', borderRadius:13, padding:'11px' }}><Icon name="trash" size={16} stroke={2.2} /></button>
+              {!done && <window.Button variant="primary" onClick={()=>addFunds(g)} style={{ flex:1, background:'var(--goals-soft)', color:'var(--goals)' }}><Icon name="plus" size={16} stroke={2.4} />Tambah Dana</window.Button>}
+              <window.IconButton onClick={()=>onDeleteGoal?.(g.id)} icon="trash" ariaLabel="Hapus Goal" style={{ background:'var(--spending-soft)', color:'var(--spending)' }} />
             </div>
           </window.Card>
         );
       })}
-      <button onClick={handleAdd} className="press" style={ctaGhost}><Icon name="plus" size={18} stroke={2.4} />Tambah Goal</button>
+      <window.Button variant="ghost" onClick={handleAdd} style={{ width:'100%', justifyContent:'center' }}><Icon name="plus" size={18} stroke={2.4} />Tambah Goal</window.Button>
 
       {celebrate && (
         <div onClick={()=>setCelebrate(null)} style={{ position:'absolute', inset:0, zIndex:300, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(8,8,12,0.5)', backdropFilter:'blur(3px)', animation:'fadeIn .25s' }}>
@@ -256,16 +288,5 @@ function GoalsTab({ hidden, goals, onAddGoal, onUpdateGoal, onDeleteGoal }) {
     </div>
   );
 }
-
-const ctaGhost = {
-  display:'flex', alignItems:'center', justifyContent:'center', gap:7, width:'100%', padding:'13px',
-  borderRadius:15, border:'1.5px dashed var(--border)', background:'transparent', color:'var(--text-2)',
-  fontFamily:'inherit', fontSize:13.5, fontWeight:700, cursor:'pointer',
-};
-const payBtn = {
-  display:'flex', alignItems:'center', justifyContent:'center', gap:7, width:'100%', padding:'11px',
-  borderRadius:13, border:'none', background:'var(--accent-soft)', color:'var(--accent)',
-  fontFamily:'inherit', fontSize:13.5, fontWeight:700, cursor:'pointer',
-};
 
 window.Anggaran = Anggaran;

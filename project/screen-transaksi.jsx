@@ -47,7 +47,7 @@ function Transaksi({ hidden, onOpenTx, month, onPrev, onNext, txs }) {
             <Icon name="search" size={18} stroke={2} color="var(--text-3)" />
             <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Cari transaksi…"
               style={{ flex:1, border:'none', outline:'none', background:'none', fontFamily:'inherit', fontSize:14, color:'var(--text)' }} />
-            {q && <button onClick={()=>setQ('')} className="press" style={{ border:'none', background:'none', cursor:'pointer', display:'flex', color:'var(--text-3)', padding:2 }}><Icon name="x" size={16} /></button>}
+            {q && <window.IconButton onClick={()=>setQ('')} icon="x" ariaLabel="Clear search" style={{ background:'transparent', color:'var(--text-3)', width:26, height:26, padding:0 }} />}
           </div>
         </div>
 
@@ -129,23 +129,12 @@ function TxDetailSheet({ tx, onClose, onDelete }) {
         </div>
 
         <div style={{ display:'flex', gap:11, marginTop:18 }}>
-          <button className="press" style={btnSecondary}><Icon name="pencil" size={17} stroke={2.2} />Edit</button>
-          <button className="press" onClick={() => { onDelete?.(tx.id); onClose(); }} style={btnDanger}><Icon name="trash" size={17} stroke={2.2} />Hapus</button>
+          <window.Button variant="outline" style={{ flex:1, justifyContent:'center' }}><Icon name="pencil" size={17} stroke={2.2} />Edit</window.Button>
+          <window.Button style={{ flex:1, justifyContent:'center', background:'var(--spending-soft)', color:'var(--spending)', border:'none' }} onClick={() => { onDelete?.(tx.id); onClose(); }}><Icon name="trash" size={17} stroke={2.2} />Hapus</window.Button>
         </div>
       </div>
     </window.Sheet>
   );
 }
-
-const btnSecondary = {
-  flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'13px', borderRadius:14,
-  border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', fontFamily:'inherit',
-  fontSize:14, fontWeight:700, cursor:'pointer',
-};
-const btnDanger = {
-  flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'13px', borderRadius:14,
-  border:'none', background:'var(--spending-soft)', color:'var(--spending)', fontFamily:'inherit',
-  fontSize:14, fontWeight:700, cursor:'pointer',
-};
 
 Object.assign(window, { Transaksi, TxDetailSheet });

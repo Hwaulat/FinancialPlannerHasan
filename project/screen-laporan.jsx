@@ -74,8 +74,8 @@ function Bulanan({ hidden, month, onPrev, onNext, summary, spendingByCat }) {
       </window.Card>
 
       <div style={{ display:'flex', gap:11 }}>
-        <button className="press" style={expBtn}><Icon name="download" size={17} stroke={2.2} />Export PDF</button>
-        <button className="press" style={expBtn}><Icon name="share" size={17} stroke={2.2} />Bagikan</button>
+        <window.Button variant="outline" style={{ flex:1, justifyContent:'center' }}><Icon name="download" size={17} stroke={2.2} />Export PDF</window.Button>
+        <window.Button variant="outline" style={{ flex:1, justifyContent:'center' }}><Icon name="share" size={17} stroke={2.2} />Bagikan</window.Button>
       </div>
     </div>
   );
@@ -120,14 +120,13 @@ function Tahunan({ hidden, recap }) {
           {SERIES.map(s=>{
             const on = active.includes(s.key);
             return (
-              <button key={s.key} onClick={()=>toggle(s.key)} className="press" style={{
-                display:'inline-flex', alignItems:'center', gap:6, padding:'5px 11px', borderRadius:99,
-                border:'1px solid var(--border)', cursor:'pointer', fontFamily:'inherit', fontSize:12, fontWeight:700,
+              <window.Button key={s.key} variant="ghost" onClick={()=>toggle(s.key)} style={{
+                padding:'5px 11px', borderRadius:99, border:'1px solid var(--border)',
                 background: on ? 'var(--surface-2)' : 'transparent', color: on ? 'var(--text)' : 'var(--text-3)',
                 opacity: on?1:0.55, transition:'all .18s',
               }}>
                 <span style={{ width:9, height:9, borderRadius:3, background:s.color }} />{s.label}
-              </button>
+              </window.Button>
             );
           })}
         </div>
@@ -200,6 +199,5 @@ function Highlight({ icon, tone, label, main, sub }) {
 
 const thCell = { padding:'9px 10px', fontSize:11, fontWeight:700, color:'var(--text-3)', textAlign:'right', borderBottom:'1px solid var(--border)', fontFamily:'var(--font)' };
 const tdCell = { padding:'9px 10px', textAlign:'right', borderBottom:'1px solid var(--border-2)', fontVariantNumeric:'tabular-nums' };
-const expBtn = { flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'13px', borderRadius:14, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', fontFamily:'inherit', fontSize:13.5, fontWeight:700, cursor:'pointer' };
 
 window.Laporan = Laporan;

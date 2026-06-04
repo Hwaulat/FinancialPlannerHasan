@@ -19,10 +19,7 @@ function HeroCard({ hidden, onToggleHide, month, onPrev, onNext, summary }) {
 
       <div style={{ position:'relative', display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
         <window.MonthSelector label={month} onPrev={onPrev} onNext={onNext} light />
-        <button onClick={onToggleHide} className="press" aria-label="Sembunyikan nominal" style={{
-          border:'none', background:'rgba(255,255,255,0.16)', color:'#fff', width:34, height:34, borderRadius:99,
-          display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', backdropFilter:'blur(8px)',
-        }}><Icon name={hidden?'eyeOff':'eye'} size={17} stroke={2.1} /></button>
+        <window.IconButton icon={hidden?'eyeOff':'eye'} ariaLabel="Sembunyikan nominal" onClick={onToggleHide} style={{ background:'rgba(255,255,255,0.16)', color:'#fff', width:34, height:34, borderRadius:99, backdropFilter:'blur(8px)' }} />
       </div>
 
       <div style={{ position:'relative' }}>
@@ -162,6 +159,7 @@ function TxRow({ t, hidden, onClick, last }) {
   const m = catMeta(t.cat);
   const income = t.type === 'income';
   const color = income ? 'var(--income)' : t.type==='savings'||t.type==='goals' ? 'var(--text)' : 'var(--text)';
+  const timeStr = t.created_at ? new Date(t.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
   return (
     <button onClick={onClick} className="press" style={{
       display:'flex', alignItems:'center', gap:12, width:'100%', textAlign:'left',
@@ -171,7 +169,7 @@ function TxRow({ t, hidden, onClick, last }) {
       <window.CatIcon cat={t.cat} size={40} />
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ fontSize:14, fontWeight:600, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.title}</div>
-        <div style={{ fontSize:11.5, color:'var(--text-3)', marginTop:2 }}>{t.cat}</div>
+        <div style={{ fontSize:11.5, color:'var(--text-3)', marginTop:2 }}>{t.cat}{timeStr?` · ${timeStr}`:''}</div>
       </div>
       <div className="num" style={{ fontSize:14, fontWeight:800, color: income ? 'var(--income)' : 'var(--text)', whiteSpace:'nowrap' }}>
         {hidden ? '••••' : (income ? '+ ' : '− ') + formatRp(t.amount).replace('−','')}

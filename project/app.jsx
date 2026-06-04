@@ -17,12 +17,14 @@ function buildSummary(txs) {
   const spending = txs.filter(t=>t.type==='spending').reduce((s,t)=>s+t.amount,0);
   const billsPaid = txs.filter(t=>t.type==='bills').reduce((s,t)=>s+t.amount,0);
   const savings = txs.filter(t=>t.type==='savings').reduce((s,t)=>s+t.amount,0);
+  const debtPaid = txs.filter(t=>t.type==='debt_payment').reduce((s,t)=>s+t.amount,0);
   return {
     income,
     spending,
     billsPaid,
     savings,
-    sisa: income - spending - billsPaid - savings,
+    debtPaid,
+    sisa: income - spending - billsPaid - savings - debtPaid,
   };
 }
 
@@ -52,12 +54,13 @@ function buildRecap(monthIdx, txs) {
     const d = new Date(t.date + 'T00:00:00');
     if (Number.isNaN(d.getTime())) return acc;
     const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    const item = acc[key] || { month: monthNames[d.getMonth()], income:0, spending:0, bills:0, savings:0, sisa:0 };
+    const item = acc[key] || { month: monthNames[d.getMonth()], income:0, spending:0, bills:0, savings:0, debtPaid:0, sisa:0 };
     item.income += t.type==='income' ? t.amount : 0;
     item.spending += t.type==='spending' ? t.amount : 0;
     item.bills += t.type==='bills' ? t.amount : 0;
     item.savings += t.type==='savings' ? t.amount : 0;
-    item.sisa = item.income - item.spending - item.bills - item.savings;
+    item.debtPaid += t.type==='debt_payment' ? t.amount : 0;
+    item.sisa = item.income - item.spending - item.bills - item.savings - item.debtPaid;
     acc[key] = item;
     return acc;
   }, {});
@@ -150,9 +153,23 @@ function App() {
     return saved;
   };
 
-  const handleUpdateDebt = async (id, paid) => {
+  const handleUpdateDebt = async (id, paid, amount) => {
+    const debt = debts.find(d => d.id === id);
+    const actualAmount = amount != null ? amount : (debt ? paid - debt.paid : 0);
     await window.DB.updateDebt(id, paid);
     setDebts(prev => prev.map(d => d.id === id ? { ...d, paid } : d));
+    if (debt && actualAmount > 0) {
+      const tx = {
+        title: `Bayar ${debt.name}`,
+        amount: actualAmount,
+        cat: debt.name,
+        type: 'debt_payment',
+        pay: 'Cash',
+        date: new Date().toISOString().slice(0,10),
+      };
+      const saved = await window.DB.addTx(tx);
+      setTxs(prev => [saved, ...prev]);
+    }
   };
 
   const handleDeleteDebt = async id => {

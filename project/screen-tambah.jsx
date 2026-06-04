@@ -68,8 +68,8 @@ function AddSheet({ open, onClose, txs = [], onSaveTx }) {
       }, 1050);
     } catch (err) {
       console.error('Failed to save transaction', err);
-      // show a simple inline alert so users see the error
-      window.alert('Gagal menyimpan transaksi: ' + (err && err.message ? err.message : String(err)));
+      // show modal alert so users see the error
+      await window.UI.alert('Gagal menyimpan transaksi: ' + (err && err.message ? err.message : String(err)), 'Error');
       setSaved(false);
     }
   }
@@ -80,7 +80,7 @@ function AddSheet({ open, onClose, txs = [], onSaveTx }) {
     <window.Sheet open={open} onClose={onClose} full height="94%">
       {/* header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 18px 6px', flexShrink:0 }}>
-        <button onClick={onClose} className="press" style={iconBtn}><Icon name="x" size={20} stroke={2.2} /></button>
+        <window.IconButton icon="x" ariaLabel="Close" onClick={onClose} />
         <div style={{ fontSize:15, fontWeight:700, color:'var(--text)' }}>Tambah Transaksi</div>
         <div style={{ width:36 }} />
       </div>
@@ -112,15 +112,13 @@ function AddSheet({ open, onClose, txs = [], onSaveTx }) {
         {/* quick amounts + reset */}
         <div style={{ display:'flex', gap:8, justifyContent:'center', padding:'8px 16px 6px', flexWrap:'wrap' }}>
           {QUICK.map(v => (
-            <button key={v} onClick={()=>setAmount(v)} className="press" style={{
-              padding:'6px 12px', borderRadius:99, border:'1px solid var(--border)', background:'var(--surface-2)',
-              color:'var(--text-2)', fontFamily:'inherit', fontSize:12, fontWeight:700, cursor:'pointer',
-            }}>{window.DATA.formatRpShort(v)}</button>
+            <window.Button key={v} variant="ghost" onClick={()=>setAmount(v)} style={{ padding:'6px 12px', borderRadius:99, background:'var(--surface-2)', color:'var(--text-2)', minWidth:88 }}>
+              {window.DATA.formatRpShort(v)}
+            </window.Button>
           ))}
-          <button onClick={()=>setAmount(0)} className="press" style={{
-            padding:'6px 12px', borderRadius:99, border:'1px solid var(--border)', background:'var(--surface-3)',
-            color:'var(--text-3)', fontFamily:'inherit', fontSize:12, fontWeight:700, cursor:'pointer',
-          }}>Reset</button>
+          <window.Button variant="outline" onClick={()=>setAmount(0)} style={{ padding:'6px 12px', borderRadius:99, minWidth:88 }}>
+            Reset
+          </window.Button>
         </div>
 
         {/* category chips */}
@@ -157,11 +155,9 @@ function AddSheet({ open, onClose, txs = [], onSaveTx }) {
           {suggestions.length>0 && (
             <div style={{ display:'flex', gap:7, marginTop:8, flexWrap:'wrap' }}>
               {suggestions.map(s=>(
-                <button key={s} onClick={()=>setName(s)} className="press" style={{
-                  display:'inline-flex', alignItems:'center', gap:5, padding:'6px 11px', borderRadius:99,
-                  border:'1px solid var(--border)', background:'var(--accent-soft)', color:'var(--accent)',
-                  fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer',
-                }}><Icon name="sparkles" size={12} stroke={2.2} />{s}</button>
+                <window.Button key={s} variant="ghost" onClick={()=>setName(s)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 11px', borderRadius:99, background:'var(--accent-soft)', color:'var(--accent)' }}>
+                  <Icon name="sparkles" size={12} stroke={2.2} />{s}
+                </window.Button>
               ))}
             </div>
           )}
@@ -199,17 +195,12 @@ function AddSheet({ open, onClose, txs = [], onSaveTx }) {
 
         {/* save buttons */}
         <div style={{ padding:'8px 16px 22px', display:'flex', flexDirection:'column', gap:9 }}>
-          <button disabled={!canSave} onClick={()=>doSave(false)} className="press" style={{
-            width:'100%', padding:'16px', borderRadius:16, border:'none', cursor: canSave?'pointer':'not-allowed',
-            fontFamily:'inherit', fontSize:15.5, fontWeight:800, color:'#fff',
-            background: canSave ? accent : 'var(--surface-3)',
-            opacity: canSave?1:0.7, transition:'all .2s', boxShadow: canSave?'var(--shadow-lift)':'none',
-          }}>Simpan</button>
-          <button disabled={!canSave} onClick={()=>doSave(true)} className="press" style={{
-            width:'100%', padding:'13px', borderRadius:16, cursor: canSave?'pointer':'not-allowed',
-            fontFamily:'inherit', fontSize:14, fontWeight:700, color: canSave?accent:'var(--text-3)',
-            background:'transparent', border:`1px solid ${canSave?accent:'var(--border)'}`,
-          }}>Simpan & Tambah Lagi</button>
+          <window.Button disabled={!canSave} onClick={()=>doSave(false)} style={{ width:'100%', padding:'16px', borderRadius:16, background: canSave ? accent : 'var(--surface-3)', opacity: canSave?1:0.7, boxShadow: canSave?'var(--shadow-lift)':'none' }}>
+            Simpan
+          </window.Button>
+          <window.Button variant="outline" disabled={!canSave} onClick={()=>doSave(true)} style={{ width:'100%', padding:'13px', borderRadius:16, color: canSave?accent:'var(--text-3)', borderColor: canSave?accent:'var(--text-3)' }}>
+            Simpan & Tambah Lagi
+          </window.Button>
         </div>
       </div>
 

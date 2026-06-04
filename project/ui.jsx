@@ -2,6 +2,42 @@
 
 const { catMeta } = window.DATA;
 
+// Design tokens / shared styles (shadcn-like)
+const btnPrimary = {
+  padding: '8px 14px', height:36, borderRadius:8, border:'none', background:'linear-gradient(90deg,var(--accent-grad-a),var(--accent-grad-b))', color:'#fff', fontWeight:700, boxShadow:'0 6px 18px rgba(91,87,232,0.12)', cursor:'pointer'
+};
+const btnOutline = {
+  padding: '8px 12px', height:36, borderRadius:8, border:'1px solid var(--border)', background:'transparent', color:'var(--text-2)', fontWeight:700, cursor:'pointer'
+};
+const inputBase = {
+  width:'100%', height:40, padding:'8px 12px', borderRadius:8, border:'1px solid var(--border)', outline:'none', fontSize:14, color:'var(--text)'
+};
+const dialogContentBase = { borderRadius:10, background:'var(--surface)', padding:20, boxShadow:'0 12px 30px rgba(2,6,23,0.35)' };
+
+function Button({ variant = 'primary', className = '', style = {}, children, ...rest }) {
+  const variants = {
+    primary: btnPrimary,
+    outline: btnOutline,
+    ghost: {
+      padding:'8px 14px', height:36, borderRadius:8, border:'1px solid transparent', background:'transparent', color:'var(--text)', fontWeight:700, cursor:'pointer'
+    },
+  };
+
+  return (
+    <button className={`press ${className}`} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8, fontFamily:'inherit', fontSize:14, ...variants[variant], ...style }} {...rest}>
+      {children}
+    </button>
+  );
+}
+
+function IconButton({ icon, ariaLabel, style = {}, ...rest }) {
+  return (
+    <button className="press" style={{ width:38, height:38, borderRadius:12, border:'none', background:'var(--surface)', color:'var(--text-2)', display:'inline-flex', alignItems:'center', justifyContent:'center', cursor:'pointer', ...style }} aria-label={ariaLabel} {...rest}>
+      <Icon name={icon} size={18} stroke={2.2} />
+    </button>
+  );
+}
+
 // Card surface
 function Card({ children, style, className = '', onClick, pad = 16, ...rest }) {
   return (
@@ -187,3 +223,136 @@ function TypeBadge({ type }) {
 }
 
 Object.assign(window, { Card, CatIcon, SectionHead, Chip, Segmented, MonthSelector, StatTile, EmptyState, Sheet, TypeBadge });
+
+// Lightweight modal API styled similar to shadcn UI (Promise-based)
+function ModalShell({ title, children, actions }) {
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(2,6,23,0.55)' }}>
+      <div style={{ width: 'min(560px, 92%)', borderRadius:14, background:'var(--surface)', padding:20, boxShadow:'0 10px 30px rgba(2,6,23,0.45)' }}>
+        {title && <div style={{ fontSize:16, fontWeight:800, color:'var(--text)', marginBottom:8 }}>{title}</div>}
+        <div style={{ marginBottom:12 }}>{children}</div>
+        <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:2 }}>{actions}</div>
+      </div>
+    </div>
+  );
+}
+
+function mountModal(element) {
+  const root = ReactDOM.createRoot(element);
+  return { root, unmount: () => { try { root.unmount(); element.remove(); } catch(e){} } };
+}
+
+function makeModalPromise(renderFn) {
+  return new Promise(resolve => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const { root, unmount } = mountModal(container);
+    let onKey = null;
+    const close = (val) => {
+      resolve(val);
+      setTimeout(()=>{
+        try { document.removeEventListener('keydown', onKey); } catch(e){}
+        unmount();
+      }, 80);
+    };
+    onKey = (e) => { if (e.key === 'Escape') close(null); };
+    document.addEventListener('keydown', onKey);
+    root.render(renderFn(close));
+    // auto-focus first focusable element inside modal
+    setTimeout(()=>{
+      try {
+        const el = container.querySelector('input,button,[tabindex]');
+        if (el && typeof el.focus === 'function') el.focus();
+      } catch(e){}
+    }, 60);
+  });
+}
+
+window.Button = Button;
+window.IconButton = IconButton;
+window.UI = {
+  alert: (msg, title='') => makeModalPromise((close) => (
+    <Dialog open={true} onClose={()=>close(null)}>
+      <DialogContent style={dialogContentBase}>
+        {title && <DialogHeader title={title} />}
+        <div style={{ fontSize:14, color:'var(--text-3)', lineHeight:1.5 }}>{msg}</div>
+        <DialogFooter>
+          <window.Button onClick={()=>close()}>OK</window.Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )),
+
+  confirm: (msg, title='') => makeModalPromise((close) => (
+    <Dialog open={true} onClose={()=>close(null)}>
+      <DialogContent style={dialogContentBase}>
+        {title && <DialogHeader title={title} />}
+        <div style={{ fontSize:14, color:'var(--text-3)', lineHeight:1.5 }}>{msg}</div>
+        <DialogFooter>
+          <window.Button variant="outline" onClick={()=>close(false)}>Cancel</window.Button>
+          <window.Button onClick={()=>close(true)}>OK</window.Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )),
+
+  prompt: (label, opts={}) => makeModalPromise((close) => {
+    function Prompt() {
+      const [val, setVal] = React.useState(opts.default || '');
+      const [focused, setFocused] = React.useState(false);
+      return (
+        <Dialog open={true} onClose={()=>close(null)}>
+          <DialogContent style={dialogContentBase}>
+            {opts.title && <DialogHeader title={opts.title} />}
+            <div style={{ fontSize:13.5, color:'var(--text-3)', marginBottom:8 }}>{label}</div>
+            <input autoFocus value={val} onChange={e=>setVal(e.target.value)}
+              onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+              style={{ ...inputBase, marginBottom:10, boxShadow: focused? '0 6px 18px rgba(91,87,232,0.12) inset':'none' }} />
+            <DialogFooter>
+              <window.Button variant="outline" onClick={()=>close(null)}>Cancel</window.Button>
+              <window.Button onClick={()=>close(val)}>OK</window.Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      );
+    }
+    return <Prompt />;
+  }),
+};
+
+// Reusable Dialog components (shadcn-style primitives)
+function Dialog({ open, onClose, children }) {
+  if (!open) return null;
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(2,6,23,0.45)' }} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{ width: 'min(640px, 94%)' }}>{children}</div>
+    </div>
+  );
+}
+
+function DialogContent({ children, style }) {
+  return (
+    <div style={{ ...dialogContentBase, ...style }}>{children}</div>
+  );
+}
+
+function DialogHeader({ title, subtitle }) {
+  return (
+    <div style={{ marginBottom:10 }}>
+      {title && <div style={{ fontSize:16, fontWeight:800, color:'var(--text)' }}>{title}</div>}
+      {subtitle && <div style={{ fontSize:13, color:'var(--text-3)', marginTop:6 }}>{subtitle}</div>}
+    </div>
+  );
+}
+
+function DialogFooter({ children }) {
+  return (
+    <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:12 }}>{children}</div>
+  );
+}
+
+function DialogTitle({ children }) { return <div style={{ fontSize:15.5, fontWeight:800 }}>{children}</div>; }
+function DialogDescription({ children }) { return <div style={{ fontSize:13, color:'var(--text-3)' }}>{children}</div>; }
+function DialogClose({ onClick }) { return <button onClick={onClick} className="press" style={{ border:'none', background:'transparent', color:'var(--text-2)' }}>Close</button>; }
+
+Object.assign(window, { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, DialogClose });
