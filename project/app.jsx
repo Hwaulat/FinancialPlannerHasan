@@ -1,6 +1,7 @@
 // app.jsx — shell: header, bottom tab + FAB, theme, routing
 
-const { BULAN } = window.DATA;
+const { BULAN, formatRp, formatRpShort } = window.DATA;
+const YEAR = 2026;
 
 const TABS = [
   { key:'beranda',   label:'Beranda',   icon:'home' },
@@ -10,6 +11,63 @@ const TABS = [
   { key:'laporan',   label:'Laporan',   icon:'bars' },
 ];
 const TITLES = { beranda:'Beranda', transaksi:'Transaksi', anggaran:'Anggaran', laporan:'Laporan' };
+
+function buildSummary(txs) {
+  const income = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const spending = txs.filter(t=>t.type==='spending').reduce((s,t)=>s+t.amount,0);
+  const billsPaid = txs.filter(t=>t.type==='bills').reduce((s,t)=>s+t.amount,0);
+  const savings = txs.filter(t=>t.type==='savings').reduce((s,t)=>s+t.amount,0);
+  return {
+    income,
+    spending,
+    billsPaid,
+    savings,
+    sisa: income - spending - billsPaid - savings,
+  };
+}
+
+function buildSpendingByCat(txs) {
+  const grouped = txs.reduce((acc,t) => {
+    if (t.type === 'income' || t.type === 'savings') return acc;
+    const key = t.cat || 'Lainnya';
+    acc[key] = (acc[key] || 0) + t.amount;
+    return acc;
+  }, {});
+  return Object.entries(grouped)
+    .map(([cat, amount]) => ({ cat, amount }))
+    .sort((a,b)=>b.amount-a.amount);
+}
+
+function buildInsights(summary) {
+  return [
+    { icon:'trendUp', tone:'income', title:'Income bulan ini', body:`${formatRp(summary.income)} sudah dicatat` },
+    { icon:'receipt', tone:'bills', title:'Tagihan terbayar', body:`${formatRp(summary.billsPaid)} sudah keluar` },
+    { icon:'piggy', tone:'savings', title:'Target tabungan', body:`${formatRp(summary.savings)} dialokasikan` },
+  ];
+}
+
+function buildRecap(monthIdx, txs) {
+  const monthNames = BULAN.map(m=>m.slice(0,3));
+  const grouped = txs.reduce((acc,t) => {
+    const d = new Date(t.date + 'T00:00:00');
+    if (Number.isNaN(d.getTime())) return acc;
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const item = acc[key] || { month: monthNames[d.getMonth()], income:0, spending:0, bills:0, savings:0, sisa:0 };
+    item.income += t.type==='income' ? t.amount : 0;
+    item.spending += t.type==='spending' ? t.amount : 0;
+    item.bills += t.type==='bills' ? t.amount : 0;
+    item.savings += t.type==='savings' ? t.amount : 0;
+    item.sisa = item.income - item.spending - item.bills - item.savings;
+    acc[key] = item;
+    return acc;
+  }, {});
+
+  return Array.from({ length: 6 }, (_, index) => {
+    const localIdx = (monthIdx - 5 + index + 12) % 12;
+    const key = `${YEAR}-${String(localIdx+1).padStart(2,'0')}`;
+    return grouped[key] || { month: monthNames[localIdx], income:0, spending:0, bills:0, savings:0, sisa:0 };
+  });
+}
 
 function App() {
   const [dark, setDark] = React.useState(false);
@@ -21,17 +79,139 @@ function App() {
   const [profileOpen, setProfileOpen] = React.useState(false);
   const [monthIdx, setMonthIdx] = React.useState(5); // Juni
 
-  const monthLabel = `${BULAN[monthIdx].slice(0,3)} 2026`;
-  const monthFull = `${BULAN[monthIdx]} 2026`;
+  const [txs, setTxs] = React.useState([]);
+  const [budgets, setBudgets] = React.useState([]);
+  const [bills, setBills] = React.useState([]);
+  const [debts, setDebts] = React.useState([]);
+  const [goals, setGoals] = React.useState([]);
+  const [error, setError] = React.useState(null);
+
+  const monthLabel = `${BULAN[monthIdx].slice(0,3)} ${YEAR}`;
+  const monthFull = `${BULAN[monthIdx]} ${YEAR}`;
+  const monthKey = `${YEAR}-${String(monthIdx+1).padStart(2,'0')}`;
   const prevM = () => setMonthIdx(i => Math.max(0, i-1));
   const nextM = () => setMonthIdx(i => Math.min(11, i+1));
+
+  React.useEffect(() => {
+    const load = async () => {
+      try {
+        setError(null);
+        const [txData, budgetData, billData, debtData, goalData] = await Promise.all([
+          window.DB.getTx(),
+          window.DB.getBudgets(monthKey),
+          window.DB.getBills(monthKey),
+          window.DB.getDebts(),
+          window.DB.getGoals(),
+        ]);
+        setTxs(txData);
+        setBudgets(budgetData);
+        setBills(billData);
+        setDebts(debtData);
+        setGoals(goalData);
+      } catch (err) {
+        console.error(err);
+        setError(err.message || 'Gagal memuat data');
+      }
+    };
+    load();
+  }, [monthKey]);
+
+  const summary = React.useMemo(() => buildSummary(txs), [txs]);
+  const spendingByCat = React.useMemo(() => buildSpendingByCat(txs), [txs]);
+  const insights = React.useMemo(() => buildInsights(summary), [summary]);
+  const recap = React.useMemo(() => buildRecap(monthIdx, txs), [monthIdx, txs]);
+
+  const handleSaveTx = async tx => {
+    const saved = await window.DB.addTx(tx);
+    setTxs(prev => [saved, ...prev]);
+    return saved;
+  };
+
+  const handleDeleteTx = async id => {
+    await window.DB.deleteTx(id);
+    setTxs(prev => prev.filter(t => t.id !== id));
+    if (selTx?.id === id) setSelTx(null);
+  };
+
+  const handleToggleBill = async bill => {
+    const nextStatus = bill.status === 'paid' ? 'unpaid' : 'paid';
+    await window.DB.toggleBill(bill.id, nextStatus);
+    setBills(prev => prev.map(b => b.id === bill.id ? { ...b, status: nextStatus } : b));
+  };
+
+  const handleDeleteBill = async id => {
+    await window.DB.deleteBill(id);
+    setBills(prev => prev.filter(b => b.id !== id));
+  };
+
+  const handleAddBill = async bill => {
+    const saved = await window.DB.addBill(bill);
+    setBills(prev => [saved, ...prev]);
+    return saved;
+  };
+
+  const handleUpdateDebt = async (id, paid) => {
+    await window.DB.updateDebt(id, paid);
+    setDebts(prev => prev.map(d => d.id === id ? { ...d, paid } : d));
+  };
+
+  const handleDeleteDebt = async id => {
+    await window.DB.deleteDebt(id);
+    setDebts(prev => prev.filter(d => d.id !== id));
+  };
+
+  const handleAddDebt = async debt => {
+    const saved = await window.DB.addDebt(debt);
+    setDebts(prev => [saved, ...prev]);
+    return saved;
+  };
+
+  const handleUpdateGoal = async (id, progress) => {
+    await window.DB.updateGoal(id, progress);
+    setGoals(prev => prev.map(g => g.id === id ? { ...g, progress } : g));
+  };
+
+  const handleDeleteGoal = async id => {
+    await window.DB.deleteGoal(id);
+    setGoals(prev => prev.filter(g => g.id !== id));
+  };
+
+  const handleAddGoal = async goal => {
+    const saved = await window.DB.addGoal(goal);
+    setGoals(prev => [saved, ...prev]);
+    return saved;
+  };
+
+  const handleSetBudget = async (cat, amount) => {
+    await window.DB.setBudget(cat, monthKey, amount);
+    setBudgets(prev => {
+      const exists = prev.some(b => b.cat === cat);
+      if (exists) return prev.map(b => b.cat === cat ? { ...b, amount } : b);
+      return [...prev, { id: Date.now(), cat, month: monthKey, amount, spent: 0 }];
+    });
+  };
 
   const goTab = k => { if (k==='add') setAddOpen(true); else setTab(k); };
   const scrollRef = React.useRef(null);
   React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [tab]);
 
-  const screenProps = { hidden, onOpenTx:setSelTx, goTab, month:monthLabel, onPrev:prevM, onNext:nextM,
-    onToggleHide:()=>setHidden(h=>!h) };
+  const dashboardProps = { hidden, onToggleHide:()=>setHidden(h=>!h), month:monthLabel, onPrev:prevM, onNext:nextM,
+    onOpenTx:setSelTx, goTab, summary, spendingByCat, insights, txs };
+  const transaksiProps = { hidden, month:monthLabel, onPrev:prevM, onNext:nextM, onOpenTx:setSelTx, openAdd:()=>setAddOpen(true), txs };
+  const anggaranProps = { hidden, month:monthLabel, onPrev:prevM, onNext:nextM,
+    budgets, bills, debts, goals,
+    onToggleBill:handleToggleBill,
+    onDeleteBill:handleDeleteBill,
+    onAddBill:handleAddBill,
+    onUpdateDebt:handleUpdateDebt,
+    onDeleteDebt:handleDeleteDebt,
+    onAddDebt:handleAddDebt,
+    onUpdateGoal:handleUpdateGoal,
+    onDeleteGoal:handleDeleteGoal,
+    onAddGoal:handleAddGoal,
+    onSetBudget:handleSetBudget,
+  };
+  const laporanProps = { hidden, month:monthLabel, onPrev:prevM, onNext:nextM, summary, spendingByCat, recap };
 
   // fit device to viewport — outer stage is position:fixed + overflow:hidden so
   // the page never grows and innerHeight stays stable.
@@ -62,7 +242,7 @@ function App() {
             {tab==='beranda' ? (
               <>
                 <div style={{ fontSize:20, fontWeight:800, color:'var(--text)', letterSpacing:-0.4, display:'flex', alignItems:'center', gap:6 }}>Halo, Hasan <span style={{fontSize:18}}>👋</span></div>
-                <div style={{ fontSize:12.5, color:'var(--text-3)', fontWeight:500, marginTop:2 }}>Rabu, 4 Juni 2026</div>
+                <div style={{ fontSize:12.5, color:'var(--text-3)', fontWeight:500, marginTop:2 }}>{monthFull}</div>
               </>
             ) : (
               <h1 style={{ margin:0, fontSize:24, fontWeight:800, color:'var(--text)', letterSpacing:-0.5 }}>{TITLES[tab]}</h1>
@@ -89,11 +269,14 @@ function App() {
         {/* ── Scrollable screen ── */}
         <main ref={scrollRef} style={{ flex:1, overflowY:'auto', overflowX:'hidden' }}>
           <div key={tab} style={{ paddingBottom:96 }}>
-            {tab==='beranda'   && <window.Dashboard  {...screenProps} />}
-            {tab==='transaksi' && <window.Transaksi  {...screenProps} openAdd={()=>setAddOpen(true)} />}
-            {tab==='anggaran'  && <window.Anggaran   {...screenProps} />}
-            {tab==='laporan'   && <window.Laporan    {...screenProps} />}
+            {tab==='beranda'   && <window.Dashboard  {...dashboardProps} />}
+            {tab==='transaksi' && <window.Transaksi  {...transaksiProps} />}
+            {tab==='anggaran'  && <window.Anggaran   {...anggaranProps} />}
+            {tab==='laporan'   && <window.Laporan    {...laporanProps} />}
           </div>
+          {error && (
+            <div style={{ padding:'16px', color:'var(--spending)', textAlign:'center' }}>Terjadi kesalahan: {error}</div>
+          )}
         </main>
 
         {/* ── Bottom tab bar ── */}
@@ -129,8 +312,8 @@ function App() {
         </nav>
 
         {/* ── Overlays ── */}
-        <window.AddSheet open={addOpen} onClose={()=>setAddOpen(false)} />
-        <window.TxDetailSheet tx={selTx} onClose={()=>setSelTx(null)} />
+        <window.AddSheet open={addOpen} onClose={()=>setAddOpen(false)} txs={txs} onSaveTx={handleSaveTx} />
+        <window.TxDetailSheet tx={selTx} onClose={()=>setSelTx(null)} onDelete={handleDeleteTx} />
         <NotifSheet open={notifOpen} onClose={()=>setNotifOpen(false)} />
         <ProfileSheet open={profileOpen} onClose={()=>setProfileOpen(false)}
           dark={dark} setDark={setDark} hidden={hidden} setHidden={setHidden} />

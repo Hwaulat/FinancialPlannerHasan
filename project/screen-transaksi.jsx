@@ -1,6 +1,6 @@
 // screen-transaksi.jsx — daftar transaksi + detail sheet
 
-const { formatRp, fmtDate, relDay, catMeta, TYPE_META, TX } = window.DATA;
+const { formatRp, fmtDate, relDay, catMeta, TYPE_META } = window.DATA;
 
 const FILTERS = [
   { key:'all', label:'Semua' },
@@ -12,11 +12,11 @@ const FILTERS = [
   { key:'debt', label:'Utang' },
 ];
 
-function Transaksi({ hidden, onOpenTx, month, onPrev, onNext, openAdd }) {
+function Transaksi({ hidden, onOpenTx, month, onPrev, onNext, txs }) {
   const [q, setQ] = React.useState('');
   const [filter, setFilter] = React.useState('all');
 
-  const filtered = TX.filter(t => {
+  const filtered = txs.filter(t => {
     const matchQ = !q || t.title.toLowerCase().includes(q.toLowerCase()) || t.cat.toLowerCase().includes(q.toLowerCase());
     let matchF = true;
     if (filter === 'debt') matchF = t.type==='debt_new' || t.type==='debt_payment';
@@ -27,7 +27,6 @@ function Transaksi({ hidden, onOpenTx, month, onPrev, onNext, openAdd }) {
   const totalIn = filtered.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const totalOut = filtered.filter(t=>['spending','bills'].includes(t.type)).reduce((s,t)=>s+t.amount,0);
 
-  // group by date
   const groups = {};
   filtered.forEach(t => { (groups[t.date] = groups[t.date] || []).push(t); });
   const dates = Object.keys(groups).sort((a,b)=>b.localeCompare(a));
@@ -78,7 +77,6 @@ function Transaksi({ hidden, onOpenTx, month, onPrev, onNext, openAdd }) {
         </div>
       </div>
 
-      {/* list */}
       {dates.length === 0 ? (
         <window.EmptyState icon="search" title="Tak ada transaksi" body="Coba ubah kata kunci atau filter, atau catat transaksi baru." />
       ) : (
@@ -101,12 +99,9 @@ function Transaksi({ hidden, onOpenTx, month, onPrev, onNext, openAdd }) {
   );
 }
 
-// ── Transaction detail sheet ─────────────────────────────────
-function TxDetailSheet({ tx, onClose }) {
+function TxDetailSheet({ tx, onClose, onDelete }) {
   if (!tx) return null;
-  const m = catMeta(tx.cat);
   const income = tx.type === 'income';
-  const tm = TYPE_META[tx.type] || TYPE_META.spending;
   return (
     <window.Sheet open={!!tx} onClose={onClose}>
       <div style={{ padding:'8px 22px 26px', display:'flex', flexDirection:'column' }}>
@@ -135,7 +130,7 @@ function TxDetailSheet({ tx, onClose }) {
 
         <div style={{ display:'flex', gap:11, marginTop:18 }}>
           <button className="press" style={btnSecondary}><Icon name="pencil" size={17} stroke={2.2} />Edit</button>
-          <button className="press" onClick={onClose} style={btnDanger}><Icon name="trash" size={17} stroke={2.2} />Hapus</button>
+          <button className="press" onClick={() => { onDelete?.(tx.id); onClose(); }} style={btnDanger}><Icon name="trash" size={17} stroke={2.2} />Hapus</button>
         </div>
       </div>
     </window.Sheet>

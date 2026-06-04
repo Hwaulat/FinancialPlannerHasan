@@ -1,6 +1,6 @@
 // screen-tambah.jsx — Tambah Transaksi (numpad + kategori + simpan)
 
-const { formatRp, CATS, TX, fmtDate } = window.DATA;
+const { formatRp, CATS, fmtDate } = window.DATA;
 
 const TYPE_TABS = [
   { key:'spending', label:'Keluar',   varName:'--spending' },
@@ -18,7 +18,7 @@ function catsForType(type) {
   return Object.entries(CATS).filter(([,m]) => m.type === want).map(([name,m]) => ({ name, ...m }));
 }
 
-function AddSheet({ open, onClose }) {
+function AddSheet({ open, onClose, txs = [], onSaveTx }) {
   const [type, setType] = React.useState('spending');
   const [amount, setAmount] = React.useState(0);      // integer rupiah
   const [cat, setCat] = React.useState(null);
@@ -37,7 +37,7 @@ function AddSheet({ open, onClose }) {
   const cats = catsForType(type);
 
   const suggestions = name.length >= 1
-    ? [...new Set(TX.filter(t => t.title.toLowerCase().startsWith(name.toLowerCase()) && t.title.toLowerCase()!==name.toLowerCase()).map(t=>t.title))].slice(0,3)
+    ? [...new Set(txs.filter(t => t.title.toLowerCase().startsWith(name.toLowerCase()) && t.title.toLowerCase()!==name.toLowerCase()).map(t=>t.title))].slice(0,3)
     : [];
 
   function press(d) {
@@ -46,16 +46,36 @@ function AddSheet({ open, onClose }) {
     setAmount(a => Math.min(a*10 + d, 9999999999));
   }
 
-  function doSave(again) {
-    if (amount <= 0) return;
-    setSaved(true);
-    setTimeout(() => {
-      if (again) { reset(true); }
-      else { onClose(); }
-    }, 1050);
+  async function doSave(again) {
+    if (amount <= 0 || !cat || !onSaveTx) {
+      console.warn('doSave aborted - invalid state', { amount, cat, hasHandler: !!onSaveTx });
+      return;
+    }
+    const tx = {
+      title: name || cat,
+      amount,
+      cat,
+      type: type === 'debt' ? 'debt_new' : type,
+      pay,
+      date: new Date().toISOString().slice(0,10),
+    };
+    try {
+      const saved = await onSaveTx(tx);
+      setSaved(true);
+      console.info('Transaction saved', saved || tx);
+      setTimeout(() => {
+        if (again) { reset(true); }
+        else { onClose(); }
+      }, 1050);
+    } catch (err) {
+      console.error('Failed to save transaction', err);
+      // show a simple inline alert so users see the error
+      window.alert('Gagal menyimpan transaksi: ' + (err && err.message ? err.message : String(err)));
+      setSaved(false);
+    }
   }
 
-  const canSave = amount > 0 && cat;
+  const canSave = amount > 0 && cat && !!onSaveTx;
 
   return (
     <window.Sheet open={open} onClose={onClose} full height="94%">

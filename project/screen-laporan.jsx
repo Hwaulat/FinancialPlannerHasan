@@ -1,32 +1,32 @@
 // screen-laporan.jsx — Laporan Bulanan & Tahunan
 
-const { formatRp, formatRpShort, SUMMARY, SPENDING_BY_CAT, RECAP, catMeta } = window.DATA;
+const { formatRp, formatRpShort, catMeta } = window.DATA;
 const { Donut, BarsH, LineChart } = window.Charts;
 
-function Laporan({ hidden, month, onPrev, onNext }) {
+function Laporan({ hidden, month, onPrev, onNext, summary = {}, spendingByCat = [], recap = [] }) {
   const [tab, setTab] = React.useState('bulanan');
   return (
     <div style={{ padding:'4px 16px 18px', display:'flex', flexDirection:'column', gap:16 }}>
       <window.Segmented items={[{key:'bulanan',label:'Bulanan'},{key:'tahunan',label:'Tahunan'}]} value={tab} onChange={setTab} />
-      {tab==='bulanan' ? <Bulanan hidden={hidden} month={month} onPrev={onPrev} onNext={onNext} /> : <Tahunan hidden={hidden} />}
+      {tab==='bulanan' ? <Bulanan hidden={hidden} month={month} onPrev={onPrev} onNext={onNext} summary={summary} spendingByCat={spendingByCat} /> : <Tahunan hidden={hidden} recap={recap} />}
     </div>
   );
 }
 
-function Bulanan({ hidden, month, onPrev, onNext }) {
+function Bulanan({ hidden, month, onPrev, onNext, summary, spendingByCat }) {
   const m = v => hidden ? '••••' : v;
   const segs = [
-    { label:'Pengeluaran', value:SUMMARY.spending, color:'var(--spending)' },
-    { label:'Tagihan',     value:SUMMARY.billsPaid, color:'var(--bills)' },
-    { label:'Tabungan',    value:SUMMARY.savings,  color:'var(--savings)' },
+    { label:'Pengeluaran', value:summary.spending || 0, color:'var(--spending)' },
+    { label:'Tagihan',     value:summary.billsPaid || 0, color:'var(--bills)' },
+    { label:'Tabungan',    value:summary.savings || 0,  color:'var(--savings)' },
   ];
   const totalOut = segs.reduce((s,x)=>s+x.value,0);
-  const bars = SPENDING_BY_CAT.map(s => ({ label:s.cat, value:s.amount, color:catMeta(s.cat).color }));
+  const bars = spendingByCat.map(s => ({ label:s.cat, value:s.amount, color:catMeta(s.cat).color }));
   const rows = [
-    ['Total Income', SUMMARY.income, 'var(--income)'],
-    ['Total Spending', SUMMARY.spending, 'var(--spending)'],
-    ['Bills Paid', SUMMARY.billsPaid, 'var(--bills)'],
-    ['Tabungan & Invest', SUMMARY.savings, 'var(--savings)'],
+    ['Total Income', summary.income || 0, 'var(--income)'],
+    ['Total Spending', summary.spending || 0, 'var(--spending)'],
+    ['Bills Paid', summary.billsPaid || 0, 'var(--bills)'],
+    ['Tabungan & Invest', summary.savings || 0, 'var(--savings)'],
   ];
 
   return (
@@ -35,15 +35,13 @@ function Bulanan({ hidden, month, onPrev, onNext }) {
         <window.MonthSelector label={month} onPrev={onPrev} onNext={onNext} />
       </div>
 
-      {/* Sisa highlighted */}
       <div style={{ borderRadius:22, padding:'20px 18px', textAlign:'center',
         background:'linear-gradient(135deg, var(--accent-grad-a), var(--accent-grad-b))', color:'#fff',
         boxShadow:'0 14px 30px -14px color-mix(in srgb, var(--accent) 70%, transparent)' }}>
         <div style={{ fontSize:12.5, opacity:0.85, fontWeight:600 }}>Sisa Uang Bulan Ini</div>
-        <div className="num" style={{ fontSize:34, fontWeight:800, letterSpacing:-0.8, marginTop:6 }}>{hidden?'Rp ••••••':formatRp(SUMMARY.sisa)}</div>
+        <div className="num" style={{ fontSize:34, fontWeight:800, letterSpacing:-0.8, marginTop:6 }}>{hidden?'Rp ••••••':formatRp(summary.sisa || 0)}</div>
       </div>
 
-      {/* summary list */}
       <window.Card pad={6}>
         {rows.map((r,i)=>(
           <div key={i} style={{ display:'flex', alignItems:'center', gap:11, padding:'13px 12px', borderBottom: i===rows.length-1?'none':'1px solid var(--border-2)' }}>
@@ -54,7 +52,6 @@ function Bulanan({ hidden, month, onPrev, onNext }) {
         ))}
       </window.Card>
 
-      {/* donut */}
       <window.Card pad={18}>
         <window.SectionHead title="Savings · Bills · Spending" />
         <div style={{ display:'flex', alignItems:'center', gap:18 }}>
@@ -64,14 +61,13 @@ function Bulanan({ hidden, month, onPrev, onNext }) {
               <div key={i} style={{ display:'flex', alignItems:'center', gap:9 }}>
                 <span style={{ width:10, height:10, borderRadius:3, background:s.color }} />
                 <span style={{ flex:1, fontSize:12.5, color:'var(--text-2)', fontWeight:600 }}>{s.label}</span>
-                <span className="num" style={{ fontSize:12.5, fontWeight:800, color:'var(--text)' }}>{Math.round(s.value/totalOut*100)}%</span>
+                <span className="num" style={{ fontSize:12.5, fontWeight:800, color:'var(--text)' }}>{totalOut ? Math.round(s.value/totalOut*100) : 0}%</span>
               </div>
             ))}
           </div>
         </div>
       </window.Card>
 
-      {/* category */}
       <window.Card pad={18}>
         <window.SectionHead title="Perbandingan Kategori Spending" />
         <BarsH rows={bars} format={hidden?()=>'••••':formatRpShort} />
@@ -85,7 +81,7 @@ function Bulanan({ hidden, month, onPrev, onNext }) {
   );
 }
 
-function Tahunan({ hidden }) {
+function Tahunan({ hidden, recap }) {
   const SERIES = [
     { key:'income',   label:'Income',   color:'var(--income)' },
     { key:'spending', label:'Spending', color:'var(--spending)' },
@@ -96,7 +92,7 @@ function Tahunan({ hidden }) {
   const toggle = k => setActive(a => a.includes(k) ? (a.length>1?a.filter(x=>x!==k):a) : [...a,k]);
   const shown = SERIES.filter(s=>active.includes(s.key));
 
-  const real = RECAP.filter(r=>r.income>0);
+  const real = recap.filter(r=>r.income>0);
   const totals = {
     income: real.reduce((s,r)=>s+r.income,0),
     savings: real.reduce((s,r)=>s+r.savings,0),
@@ -104,9 +100,9 @@ function Tahunan({ hidden }) {
     spending: real.reduce((s,r)=>s+r.spending,0),
   };
   const m = v => hidden ? '••••' : v;
-  const topIncome = real.reduce((a,b)=>b.income>a.income?b:a);
-  const topSpend = real.reduce((a,b)=>b.spending>a.spending?b:a);
-  const avgSav = totals.savings/real.length;
+  const topIncome = real.length ? real.reduce((a,b)=>b.income>a.income?b:a) : { month:'-', income:0 };
+  const topSpend = real.length ? real.reduce((a,b)=>b.spending>a.spending?b:a) : { month:'-', spending:0 };
+  const avgSav = real.length ? totals.savings/real.length : 0;
 
   const tableRows = [
     ['Income', 'income', 'var(--income)'],
@@ -118,7 +114,6 @@ function Tahunan({ hidden }) {
 
   return (
     <div className="stagger" style={{ display:'flex', flexDirection:'column', gap:16 }}>
-      {/* trend chart */}
       <window.Card pad={16}>
         <window.SectionHead title="Tren Tahunan 2026" />
         <div style={{ display:'flex', gap:7, flexWrap:'wrap', marginBottom:14 }}>
@@ -136,10 +131,9 @@ function Tahunan({ hidden }) {
             );
           })}
         </div>
-        <LineChart data={RECAP} series={shown} />
+        <LineChart data={recap} series={shown} />
       </window.Card>
 
-      {/* recap table */}
       <window.Card pad={0} style={{ overflow:'hidden' }}>
         <div style={{ padding:'15px 16px 11px' }}><window.SectionHead title="Rekap 12 Bulan" /></div>
         <div style={{ overflowX:'auto' }}>
@@ -147,7 +141,7 @@ function Tahunan({ hidden }) {
             <thead>
               <tr>
                 <th style={{ ...thCell, position:'sticky', left:0, background:'var(--surface)', textAlign:'left', zIndex:1 }}>Metrik</th>
-                {RECAP.map(r=><th key={r.m} style={thCell}>{r.m}</th>)}
+                {recap.map(r=><th key={r.month} style={thCell}>{r.month}</th>)}
                 <th style={{...thCell, color:'var(--accent)'}}>Total</th>
               </tr>
             </thead>
@@ -155,9 +149,9 @@ function Tahunan({ hidden }) {
               {tableRows.map(([label,key,color])=>(
                 <tr key={key}>
                   <td style={{ ...tdCell, position:'sticky', left:0, background:'var(--surface)', textAlign:'left', fontWeight:700, color, zIndex:1, fontFamily:'var(--font)', whiteSpace:'nowrap' }}>{label}</td>
-                  {RECAP.map(r=>(
-                    <td key={r.m} style={{ ...tdCell, color: r[key]<0?'var(--spending)':'var(--text-2)' }}>
-                      {r.income===0 ? '–' : (hidden?'••':formatRpShort(r[key]).replace('Rp ',''))}
+                  {recap.map(r=>(
+                    <td key={r.month} style={{ ...tdCell, color: r[key]<0?'var(--spending)':'var(--text-2)' }}>
+                      {recap.length === 0 ? '–' : (hidden?'••':formatRpShort(r[key]).replace('Rp ',''))}
                     </td>
                   ))}
                   <td style={{ ...tdCell, fontWeight:800, color:'var(--text)' }}>
@@ -170,7 +164,6 @@ function Tahunan({ hidden }) {
         </div>
       </window.Card>
 
-      {/* total asset */}
       <div style={{ borderRadius:20, padding:'18px', background:'var(--accent-soft)', border:'1px solid var(--border)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <div style={{ width:38, height:38, borderRadius:12, background:'var(--accent)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -182,12 +175,11 @@ function Tahunan({ hidden }) {
         </div>
       </div>
 
-      {/* highlights */}
       <window.SectionHead title="Highlight Tahunan" />
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:11 }}>
-        <Highlight icon="trendUp"  tone="income"   label="Income tertinggi" main={topIncome.m} sub={m(formatRpShort(topIncome.income))} />
-        <Highlight icon="trendDown" tone="spending" label="Spending tertinggi" main={topSpend.m} sub={m(formatRpShort(topSpend.spending))} />
-        <Highlight icon="bag"      tone="spending" label="Kategori terbesar" main="Makan/minum" sub={m(formatRpShort(7+ SPENDING_BY_CAT[0].amount))} />
+        <Highlight icon="trendUp"  tone="income"   label="Income tertinggi" main={topIncome.month} sub={m(formatRpShort(topIncome.income))} />
+        <Highlight icon="trendDown" tone="spending" label="Spending tertinggi" main={topSpend.month} sub={m(formatRpShort(topSpend.spending))} />
+        <Highlight icon="bag"      tone="spending" label="Kategori terbesar" main={spendingByCat.length?spendingByCat[0].cat:'-'} sub={m(formatRpShort(spendingByCat.length?spendingByCat[0].amount:0))} />
         <Highlight icon="piggy"    tone="savings"  label="Rata² nabung/bln" main={m(formatRpShort(avgSav))} sub="6 bulan" />
       </div>
     </div>

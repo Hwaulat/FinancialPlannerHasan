@@ -1,11 +1,10 @@
 // screen-dashboard.jsx — Beranda
 
-const { formatRp, formatRpShort, relDay, catMeta, isIncome,
-        SUMMARY, SPENDING_BY_CAT, TX, INSIGHTS } = window.DATA;
+const { formatRp, formatRpShort, relDay, catMeta, isIncome } = window.DATA;
 const { Donut, BarsH } = window.Charts;
 
-function HeroCard({ hidden, onToggleHide, month, onPrev, onNext }) {
-  const sisa = SUMMARY.sisa;
+function HeroCard({ hidden, onToggleHide, month, onPrev, onNext, summary }) {
+  const sisa = summary.sisa;
   const positive = sisa >= 0;
   return (
     <div style={{
@@ -40,7 +39,7 @@ function HeroCard({ hidden, onToggleHide, month, onPrev, onNext }) {
             {positive ? 'Surplus' : 'Defisit'}
           </span>
           <span style={{ fontSize:12.5, opacity:0.85 }}>
-            dari {hidden ? 'Rp ••••' : formatRp(SUMMARY.income)} pemasukan
+            dari {hidden ? 'Rp ••••' : formatRp(summary.income)} pemasukan
           </span>
         </div>
       </div>
@@ -48,31 +47,31 @@ function HeroCard({ hidden, onToggleHide, month, onPrev, onNext }) {
   );
 }
 
-function Dashboard({ hidden, onToggleHide, onOpenTx, goTab, month, onPrev, onNext }) {
-  const recent = TX.slice(0, 5);
+function Dashboard({ hidden, onToggleHide, onOpenTx, goTab, month, onPrev, onNext, summary, spendingByCat, insights, txs }) {
+  const recent = txs.slice(0, 5);
   const mask = v => hidden ? 'Rp ••••' : v;
 
   const donutSegs = [
-    { label:'Pengeluaran', value:SUMMARY.spending,  color:'var(--spending)' },
-    { label:'Tagihan',     value:SUMMARY.billsPaid,  color:'var(--bills)' },
-    { label:'Tabungan',    value:SUMMARY.savings,    color:'var(--savings)' },
+    { label:'Pengeluaran', value:summary.spending,  color:'var(--spending)' },
+    { label:'Tagihan',     value:summary.billsPaid,  color:'var(--bills)' },
+    { label:'Tabungan',    value:summary.savings,    color:'var(--savings)' },
   ];
   const totalOut = donutSegs.reduce((s,x)=>s+x.value,0);
 
-  const barRows = SPENDING_BY_CAT.slice(0,5).map(s => ({
+  const barRows = spendingByCat.slice(0,5).map(s => ({
     label:s.cat, value:s.amount, color:catMeta(s.cat).color,
   }));
 
   return (
     <div className="stagger" style={{ padding:'4px 16px 18px', display:'flex', flexDirection:'column', gap:18 }}>
-      <HeroCard hidden={hidden} onToggleHide={onToggleHide} month={month} onPrev={onPrev} onNext={onNext} />
+      <HeroCard hidden={hidden} onToggleHide={onToggleHide} month={month} onPrev={onPrev} onNext={onNext} summary={summary} />
 
       {/* 4 stat tiles */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:11 }}>
-        <window.StatTile icon="trendUp"   label="Pemasukan"  value={mask(formatRpShort(SUMMARY.income))}   varName="--income" />
-        <window.StatTile icon="trendDown" label="Pengeluaran" value={mask(formatRpShort(SUMMARY.spending))} varName="--spending" />
-        <window.StatTile icon="piggy"     label="Tabungan"   value={mask(formatRpShort(SUMMARY.savings))}  varName="--savings" />
-        <window.StatTile icon="receipt"   label="Tagihan Dibayar" value={mask(formatRpShort(SUMMARY.billsPaid))} varName="--bills" />
+        <window.StatTile icon="trendUp"   label="Pemasukan"  value={mask(formatRpShort(summary.income))}   varName="--income" />
+        <window.StatTile icon="trendDown" label="Pengeluaran" value={mask(formatRpShort(summary.spending))} varName="--spending" />
+        <window.StatTile icon="piggy"     label="Tabungan"   value={mask(formatRpShort(summary.savings))}  varName="--savings" />
+        <window.StatTile icon="receipt"   label="Tagihan Dibayar" value={mask(formatRpShort(summary.billsPaid))} varName="--bills" />
       </div>
 
       {/* Allocation donut */}
@@ -89,7 +88,7 @@ function Dashboard({ hidden, onToggleHide, onOpenTx, goTab, month, onPrev, onNex
                   <div style={{ fontSize:12.5, color:'var(--text-2)', fontWeight:600 }}>{s.label}</div>
                 </div>
                 <div style={{ textAlign:'right' }}>
-                  <div style={{ fontSize:12.5, fontWeight:800, color:'var(--text)' }}>{Math.round(s.value/totalOut*100)}%</div>
+                  <div style={{ fontSize:12.5, fontWeight:800, color:'var(--text)' }}>{totalOut ? Math.round(s.value/totalOut*100) : 0}%</div>
                 </div>
               </div>
             ))}
@@ -107,7 +106,7 @@ function Dashboard({ hidden, onToggleHide, onOpenTx, goTab, month, onPrev, onNex
       <div>
         <window.SectionHead title="Insight untukmu" />
         <div style={{ display:'flex', gap:11, overflowX:'auto', padding:'2px 2px 6px', margin:'0 -2px' }}>
-          {INSIGHTS.map((ins,i)=>(
+          {insights.map((ins,i)=>(
             <div key={i} className="lift" style={{
               minWidth:210, maxWidth:210, flexShrink:0, padding:14, borderRadius:18,
               background:'var(--surface)', border:'1px solid var(--border)', boxShadow:'var(--shadow-card)',

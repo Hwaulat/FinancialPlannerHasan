@@ -1,19 +1,21 @@
 // screen-anggaran.jsx — Budget · Tagihan · Utang · Goals
 
-const { formatRp, formatRpShort, catMeta, BUDGETS, BILLS, DEBTS, GOALS } = window.DATA;
+const { formatRp, formatRpShort, catMeta } = window.DATA;
 const { ProgressBar, Ring } = window.Charts;
 
-function Anggaran({ hidden, month, onPrev, onNext }) {
+function Anggaran({ hidden, budgets = [], bills = [], debts = [], goals = [],
+  onToggleBill, onDeleteBill, onAddBill, onSetBudget,
+  onAddDebt, onUpdateDebt, onDeleteDebt, onAddGoal, onUpdateGoal, onDeleteGoal }) {
   const [tab, setTab] = React.useState('budget');
   return (
     <div style={{ padding:'4px 16px 18px', display:'flex', flexDirection:'column', gap:16 }}>
       <window.Segmented
         items={[{key:'budget',label:'Budget'},{key:'bills',label:'Tagihan'},{key:'debt',label:'Utang'},{key:'goals',label:'Goals'}]}
         value={tab} onChange={setTab} />
-      {tab==='budget' && <BudgetTab hidden={hidden} />}
-      {tab==='bills'  && <BillsTab hidden={hidden} />}
-      {tab==='debt'   && <DebtTab hidden={hidden} />}
-      {tab==='goals'  && <GoalsTab hidden={hidden} />}
+      {tab==='budget' && <BudgetTab hidden={hidden} budgets={budgets} onSetBudget={onSetBudget} />}
+      {tab==='bills'  && <BillsTab hidden={hidden} bills={bills} onToggleBill={onToggleBill} onDeleteBill={onDeleteBill} onAddBill={onAddBill} />}
+      {tab==='debt'   && <DebtTab hidden={hidden} debts={debts} onAddDebt={onAddDebt} onUpdateDebt={onUpdateDebt} onDeleteDebt={onDeleteDebt} />}
+      {tab==='goals'  && <GoalsTab hidden={hidden} goals={goals} onAddGoal={onAddGoal} onUpdateGoal={onUpdateGoal} onDeleteGoal={onDeleteGoal} />}
     </div>
   );
 }
@@ -31,11 +33,17 @@ function SummaryStrip({ items }) {
   );
 }
 
-// ── BUDGET ───────────────────────────────────────────────────
-function BudgetTab({ hidden }) {
-  const totalB = BUDGETS.reduce((s,b)=>s+b.budget,0);
-  const totalS = BUDGETS.reduce((s,b)=>s+b.spent,0);
+function BudgetTab({ hidden, budgets, onSetBudget }) {
+  const totalB = budgets.reduce((s,b)=>s+b.amount,0);
+  const totalS = budgets.reduce((s,b)=>s+b.spent||0,0);
   const m = v => hidden ? '••••' : v;
+
+  const handleBudget = () => {
+    const cat = window.prompt('Kategori budget');
+    const amount = Number(window.prompt('Jumlah budget (angka)'));
+    if (cat && !Number.isNaN(amount) && onSetBudget) onSetBudget(cat, amount);
+  };
+
   return (
     <div className="stagger" style={{ display:'flex', flexDirection:'column', gap:14 }}>
       <SummaryStrip items={[
@@ -43,43 +51,49 @@ function BudgetTab({ hidden }) {
         { label:'Terpakai', value:m(formatRpShort(totalS)), color: totalS>totalB?'var(--spending)':'var(--text)' },
         { label:'Sisa', value:m(formatRpShort(totalB-totalS)), color:'var(--income)' },
       ]} />
-      {BUDGETS.map((b,i) => {
-        const pct = Math.round(b.spent/b.budget*100);
+      {budgets.map((b,i) => {
+        const spent = b.spent || 0;
+        const pct = b.amount > 0 ? Math.round(spent/b.amount*100) : 0;
         const over = pct > 100;
         const col = over ? 'var(--spending)' : pct >= 80 ? 'var(--bills)' : 'var(--income)';
-        const cm = catMeta(b.cat);
         return (
-          <window.Card key={b.cat} pad={15} className="lift">
+          <window.Card key={`${b.cat}-${b.id||i}`} pad={15} className="lift">
             <div style={{ display:'flex', alignItems:'center', gap:11, marginBottom:11 }}>
               <window.CatIcon cat={b.cat} size={38} />
               <div style={{ flex:1 }}>
                 <div style={{ fontSize:14, fontWeight:700, color:'var(--text)' }}>{b.cat}</div>
                 <div className="num" style={{ fontSize:12, color:'var(--text-3)', marginTop:2 }}>
-                  {m(formatRp(b.spent))} / {m(formatRp(b.budget))}
+                  {m(formatRp(spent))} / {m(formatRp(b.amount))}
                 </div>
               </div>
               <div style={{ fontSize:13, fontWeight:800, color:col }}>{pct}%</div>
             </div>
             <ProgressBar pct={pct} color={col} delay={i*0.05} />
             <div style={{ marginTop:8, fontSize:11.5, fontWeight:600, color: over?'var(--spending)':'var(--text-3)' }}>
-              {over ? `Lewat ${m(formatRp(b.spent-b.budget))}` : `Sisa ${m(formatRp(b.budget-b.spent))}`}
+              {over ? `Lewat ${m(formatRp(spent-b.amount))}` : `Sisa ${m(formatRp(b.amount-spent))}`}
             </div>
           </window.Card>
         );
       })}
-      <button className="press" style={ctaGhost}><Icon name="settings" size={18} stroke={2.2} />Atur Budget</button>
+      <button onClick={handleBudget} className="press" style={ctaGhost}><Icon name="settings" size={18} stroke={2.2} />Atur Budget</button>
     </div>
   );
 }
 
-// ── BILLS ────────────────────────────────────────────────────
-function BillsTab({ hidden }) {
-  const [bills, setBills] = React.useState(BILLS.map(b=>({...b})));
-  const toggle = id => setBills(bs => bs.map(b => b.id===id ? {...b, status: b.status==='paid'?'unpaid':'paid'} : b));
+function BillsTab({ hidden, bills, onToggleBill, onDeleteBill, onAddBill }) {
   const total = bills.reduce((s,b)=>s+b.amount,0);
   const paid = bills.filter(b=>b.status==='paid').reduce((s,b)=>s+b.amount,0);
   const m = v => hidden ? '••••' : v;
-  const sorted = [...bills].sort((a,b)=> (a.status===b.status) ? a.dueDay-b.dueDay : a.status==='unpaid'?-1:1);
+  const sorted = [...bills].sort((a,b)=> (a.status===b.status) ? a.due_day - b.due_day : a.status==='unpaid'?-1:1);
+
+  const handleAdd = () => {
+    const name = window.prompt('Nama tagihan');
+    const dueDay = Number(window.prompt('Tanggal jatuh tempo'));
+    const amount = Number(window.prompt('Jumlah tagihan')); 
+    if (name && !Number.isNaN(dueDay) && !Number.isNaN(amount) && onAddBill) {
+      onAddBill({ name, due_day: dueDay, amount, status:'unpaid', month: '' });
+    }
+  };
 
   return (
     <div className="stagger" style={{ display:'flex', flexDirection:'column', gap:14 }}>
@@ -91,39 +105,48 @@ function BillsTab({ hidden }) {
       <window.Card pad={6}>
         {sorted.map((b,i)=>{
           const paidB = b.status==='paid';
-          const soon = !paidB && b.dueDay - 4 <= 6;
+          const soon = !paidB && b.due_day - 4 <= 6;
           return (
             <div key={b.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 10px', borderBottom: i===sorted.length-1?'none':'1px solid var(--border-2)' }}>
               <window.CatIcon cat={b.name} size={40} />
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:14, fontWeight:600, color:'var(--text)' }}>{b.name}</div>
                 <div style={{ fontSize:11.5, color: soon?'var(--spending)':'var(--text-3)', marginTop:2, fontWeight: soon?700:500 }}>
-                  Jatuh tempo tgl {b.dueDay}{soon?' · segera':''}
+                  Jatuh tempo tgl {b.due_day}{soon?' · segera':''}
                 </div>
               </div>
               <div className="num" style={{ fontSize:13.5, fontWeight:800, color:'var(--text)' }}>{m(formatRp(b.amount))}</div>
-              <button onClick={()=>toggle(b.id)} className="press" aria-label="toggle" style={{
-                marginLeft:4, border:'none', cursor:'pointer', borderRadius:99, padding:'5px 11px',
+              <button onClick={()=>onToggleBill?.(b)} className="press" aria-label="toggle" style={{
+                border:'none', cursor:'pointer', borderRadius:99, padding:'5px 11px',
                 fontFamily:'inherit', fontSize:11.5, fontWeight:700, display:'flex', alignItems:'center', gap:4,
                 background: paidB ? 'var(--income-soft)' : 'var(--surface-3)',
                 color: paidB ? 'var(--income)' : 'var(--text-3)', transition:'all .2s',
               }}>
                 {paidB && <Icon name="check" size={13} stroke={3} />}{paidB?'Lunas':'Bayar'}
               </button>
+              <button onClick={()=>onDeleteBill?.(b.id)} className="press" style={{ border:'none', background:'transparent', color:'var(--spending)', cursor:'pointer' }}><Icon name="trash" size={16} stroke={2.2} /></button>
             </div>
           );
         })}
       </window.Card>
-      <button className="press" style={ctaGhost}><Icon name="plus" size={18} stroke={2.4} />Tambah Tagihan</button>
+      <button onClick={handleAdd} className="press" style={ctaGhost}><Icon name="plus" size={18} stroke={2.4} />Tambah Tagihan</button>
     </div>
   );
 }
 
-// ── DEBT ─────────────────────────────────────────────────────
-function DebtTab({ hidden }) {
-  const total = DEBTS.reduce((s,d)=>s+d.total,0);
-  const paid = DEBTS.reduce((s,d)=>s+d.paid,0);
+function DebtTab({ hidden, debts, onAddDebt, onUpdateDebt, onDeleteDebt }) {
+  const total = debts.reduce((s,d)=>s+d.total,0);
+  const paid = debts.reduce((s,d)=>s+d.paid,0);
   const m = v => hidden ? '••••' : v;
+
+  const handleAdd = () => {
+    const name = window.prompt('Nama utang');
+    const total = Number(window.prompt('Total utang')); 
+    if (name && !Number.isNaN(total) && onAddDebt) {
+      onAddDebt({ name, total, paid: 0, icon:'hand' });
+    }
+  };
+
   return (
     <div className="stagger" style={{ display:'flex', flexDirection:'column', gap:14 }}>
       <SummaryStrip items={[
@@ -131,8 +154,8 @@ function DebtTab({ hidden }) {
         { label:'Terbayar', value:m(formatRpShort(paid)), color:'var(--income)' },
         { label:'Sisa', value:m(formatRpShort(total-paid)), color:'var(--spending)' },
       ]} />
-      {DEBTS.map((d,i)=>{
-        const pct = Math.round(d.paid/d.total*100);
+      {debts.map((d,i)=>{
+        const pct = d.total ? Math.round(d.paid/d.total*100) : 0;
         return (
           <window.Card key={d.id} pad={16} className="lift">
             <div style={{ display:'flex', alignItems:'center', gap:11, marginBottom:13 }}>
@@ -148,35 +171,41 @@ function DebtTab({ hidden }) {
               <span className="num" style={{ fontSize:12, color:'var(--text-3)' }}>Terbayar <b style={{color:'var(--income)'}}>{m(formatRp(d.paid))}</b></span>
               <span className="num" style={{ fontSize:12, color:'var(--text-3)' }}>Sisa <b style={{color:'var(--text)'}}>{m(formatRp(d.total-d.paid))}</b></span>
             </div>
-            <button className="press" style={{ ...payBtn, marginTop:14 }}><Icon name="wallet" size={16} stroke={2.2} />Bayar Cicilan</button>
+            <div style={{ display:'flex', gap:8, marginTop:14 }}>
+              <button onClick={() => onUpdateDebt?.(d.id, Math.min(d.total, d.paid + Math.max(10000, Math.round((d.total - d.paid) * 0.2))))} className="press" style={{ ...payBtn, flex:1 }}><Icon name="wallet" size={16} stroke={2.2} />Bayar Cicilan</button>
+              <button onClick={()=>onDeleteDebt?.(d.id)} className="press" style={{ border:'none', background:'var(--spending-soft)', color:'var(--spending)', borderRadius:13, padding:'11px' }}><Icon name="trash" size={16} stroke={2.2} /></button>
+            </div>
           </window.Card>
         );
       })}
-      <button className="press" style={ctaGhost}><Icon name="plus" size={18} stroke={2.4} />Tambah Utang</button>
+      <button onClick={handleAdd} className="press" style={ctaGhost}><Icon name="plus" size={18} stroke={2.4} />Tambah Utang</button>
     </div>
   );
 }
 
-// ── GOALS ────────────────────────────────────────────────────
-function GoalsTab({ hidden }) {
-  const [goals, setGoals] = React.useState(GOALS.map(g=>({...g})));
+function GoalsTab({ hidden, goals, onAddGoal, onUpdateGoal, onDeleteGoal }) {
   const [celebrate, setCelebrate] = React.useState(null);
   const m = v => hidden ? '••••' : v;
 
-  function addFunds(id) {
-    setGoals(gs => gs.map(g => {
-      if (g.id!==id) return g;
-      const step = g.unit==='gr' ? 1 : g.target*0.2;
-      const np = Math.min(g.progress + step, g.target);
-      if (np >= g.target && g.progress < g.target) setCelebrate(g.name);
-      return {...g, progress:np};
-    }));
+  function addFunds(g) {
+    const step = g.unit==='gr' ? 1 : Math.round(g.target * 0.2);
+    const next = Math.min(g.progress + step, g.target);
+    onUpdateGoal?.(g.id, next);
+    if (next >= g.target && g.progress < g.target) setCelebrate(g.name);
   }
+
+  const handleAdd = () => {
+    const name = window.prompt('Nama goal');
+    const target = Number(window.prompt('Target nominal')); 
+    if (name && !Number.isNaN(target) && onAddGoal) {
+      onAddGoal({ name, target, progress: 0, icon:'flag', unit:'rp' });
+    }
+  };
 
   return (
     <div className="stagger" style={{ display:'flex', flexDirection:'column', gap:14 }}>
       {goals.map((g,i)=>{
-        const pct = Math.round(g.progress/g.target*100);
+        const pct = g.target ? Math.round(g.progress/g.target*100) : 0;
         const done = pct>=100;
         const fmt = g.unit==='gr' ? (v)=>`${v} gr` : (v)=>formatRp(v);
         return (
@@ -196,15 +225,14 @@ function GoalsTab({ hidden }) {
                 <div style={{ marginTop:8 }}><ProgressBar pct={pct} color="var(--goals)" height={7} delay={i*0.05} /></div>
               </div>
             </div>
-            {!done && (
-              <button onClick={()=>addFunds(g.id)} className="press" style={{ ...payBtn, marginTop:14, background:'var(--goals-soft)', color:'var(--goals)' }}>
-                <Icon name="plus" size={16} stroke={2.4} />Tambah Dana
-              </button>
-            )}
+            <div style={{ display:'flex', gap:8, marginTop:14 }}>
+              {!done && <button onClick={()=>addFunds(g)} className="press" style={{ ...payBtn, flex:1, background:'var(--goals-soft)', color:'var(--goals)' }}><Icon name="plus" size={16} stroke={2.4} />Tambah Dana</button>}
+              <button onClick={()=>onDeleteGoal?.(g.id)} className="press" style={{ border:'none', background:'var(--spending-soft)', color:'var(--spending)', borderRadius:13, padding:'11px' }}><Icon name="trash" size={16} stroke={2.2} /></button>
+            </div>
           </window.Card>
         );
       })}
-      <button className="press" style={ctaGhost}><Icon name="plus" size={18} stroke={2.4} />Tambah Goal</button>
+      <button onClick={handleAdd} className="press" style={ctaGhost}><Icon name="plus" size={18} stroke={2.4} />Tambah Goal</button>
 
       {celebrate && (
         <div onClick={()=>setCelebrate(null)} style={{ position:'absolute', inset:0, zIndex:300, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(8,8,12,0.5)', backdropFilter:'blur(3px)', animation:'fadeIn .25s' }}>
