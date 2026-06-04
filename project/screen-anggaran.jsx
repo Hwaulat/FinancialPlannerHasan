@@ -10,10 +10,9 @@ function Anggaran({ hidden, budgets = [], bills = [], debts = [], goals = [],
   return (
     <div style={{ padding:'4px 16px 18px', display:'flex', flexDirection:'column', gap:16 }}>
       <window.Segmented
-        items={[{key:'budget',label:'Budget'},{key:'bills',label:'Tagihan'},{key:'debt',label:'Utang'},{key:'goals',label:'Goals'}]}
+        items={[{key:'budget',label:'Budget'},{key:'debt',label:'Utang'},{key:'goals',label:'Goals'}]}
         value={tab} onChange={setTab} />
       {tab==='budget' && <BudgetTab hidden={hidden} budgets={budgets} onSetBudget={onSetBudget} />}
-      {tab==='bills'  && <BillsTab hidden={hidden} bills={bills} onToggleBill={onToggleBill} onDeleteBill={onDeleteBill} onAddBill={onAddBill} />}
       {tab==='debt'   && <DebtTab hidden={hidden} debts={debts} onAddDebt={onAddDebt} onUpdateDebt={onUpdateDebt} onDeleteDebt={onDeleteDebt} />}
       {tab==='goals'  && <GoalsTab hidden={hidden} goals={goals} onAddGoal={onAddGoal} onUpdateGoal={onUpdateGoal} onDeleteGoal={onDeleteGoal} />}
     </div>
@@ -172,7 +171,13 @@ function DebtTab({ hidden, debts, onAddDebt, onUpdateDebt, onDeleteDebt }) {
               <span className="num" style={{ fontSize:12, color:'var(--text-3)' }}>Sisa <b style={{color:'var(--text)'}}>{m(formatRp(d.total-d.paid))}</b></span>
             </div>
             <div style={{ display:'flex', gap:8, marginTop:14 }}>
-              <button onClick={() => onUpdateDebt?.(d.id, Math.min(d.total, d.paid + Math.max(10000, Math.round((d.total - d.paid) * 0.2))))} className="press" style={{ ...payBtn, flex:1 }}><Icon name="wallet" size={16} stroke={2.2} />Bayar Cicilan</button>
+              <button onClick={() => {
+                const val = Number(window.prompt('Masukkan nominal pembayaran (angka)'));
+                if (!Number.isNaN(val) && val > 0) {
+                  const newPaid = Math.min(d.total, d.paid + Math.round(val));
+                  onUpdateDebt?.(d.id, newPaid);
+                }
+              }} className="press" style={{ ...payBtn, flex:1 }}><Icon name="wallet" size={16} stroke={2.2} />Bayar</button>
               <button onClick={()=>onDeleteDebt?.(d.id)} className="press" style={{ border:'none', background:'var(--spending-soft)', color:'var(--spending)', borderRadius:13, padding:'11px' }}><Icon name="trash" size={16} stroke={2.2} /></button>
             </div>
           </window.Card>

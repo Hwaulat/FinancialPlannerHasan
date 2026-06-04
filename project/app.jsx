@@ -196,7 +196,7 @@ function App() {
   React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [tab]);
 
   const dashboardProps = { hidden, onToggleHide:()=>setHidden(h=>!h), month:monthLabel, onPrev:prevM, onNext:nextM,
-    onOpenTx:setSelTx, goTab, summary, spendingByCat, insights, txs };
+    onOpenTx:setSelTx, goTab, summary, spendingByCat, insights, txs, debts };
   const transaksiProps = { hidden, month:monthLabel, onPrev:prevM, onNext:nextM, onOpenTx:setSelTx, openAdd:()=>setAddOpen(true), txs };
   const anggaranProps = { hidden, month:monthLabel, onPrev:prevM, onNext:nextM,
     budgets, bills, debts, goals,

@@ -7,7 +7,6 @@ const TYPE_TABS = [
   { key:'income',   label:'Masuk',    varName:'--income' },
   { key:'savings',  label:'Tabungan', varName:'--savings' },
   { key:'bills',    label:'Tagihan',  varName:'--bills' },
-  { key:'debt',     label:'Utang',    varName:'--goals' },
 ];
 
 const QUICK = [15000, 20000, 50000, 100000];
@@ -55,7 +54,7 @@ function AddSheet({ open, onClose, txs = [], onSaveTx }) {
       title: name || cat,
       amount,
       cat,
-      type: type === 'debt' ? 'debt_new' : type,
+      type,
       pay,
       date: new Date().toISOString().slice(0,10),
     };
@@ -110,7 +109,7 @@ function AddSheet({ open, onClose, txs = [], onSaveTx }) {
           </div>
         </div>
 
-        {/* quick amounts */}
+        {/* quick amounts + reset */}
         <div style={{ display:'flex', gap:8, justifyContent:'center', padding:'8px 16px 6px', flexWrap:'wrap' }}>
           {QUICK.map(v => (
             <button key={v} onClick={()=>setAmount(v)} className="press" style={{
@@ -118,6 +117,10 @@ function AddSheet({ open, onClose, txs = [], onSaveTx }) {
               color:'var(--text-2)', fontFamily:'inherit', fontSize:12, fontWeight:700, cursor:'pointer',
             }}>{window.DATA.formatRpShort(v)}</button>
           ))}
+          <button onClick={()=>setAmount(0)} className="press" style={{
+            padding:'6px 12px', borderRadius:99, border:'1px solid var(--border)', background:'var(--surface-3)',
+            color:'var(--text-3)', fontFamily:'inherit', fontSize:12, fontWeight:700, cursor:'pointer',
+          }}>Reset</button>
         </div>
 
         {/* category chips */}

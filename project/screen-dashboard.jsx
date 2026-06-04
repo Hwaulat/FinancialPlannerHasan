@@ -47,7 +47,7 @@ function HeroCard({ hidden, onToggleHide, month, onPrev, onNext, summary }) {
   );
 }
 
-function Dashboard({ hidden, onToggleHide, onOpenTx, goTab, month, onPrev, onNext, summary, spendingByCat, insights, txs }) {
+function Dashboard({ hidden, onToggleHide, onOpenTx, goTab, month, onPrev, onNext, summary, spendingByCat, insights, txs, debts }) {
   const recent = txs.slice(0, 5);
   const mask = v => hidden ? 'Rp ••••' : v;
 
@@ -62,6 +62,9 @@ function Dashboard({ hidden, onToggleHide, onOpenTx, goTab, month, onPrev, onNex
     label:s.cat, value:s.amount, color:catMeta(s.cat).color,
   }));
 
+  const debtsTotal = (debts || []).reduce((s,d)=>s + (d.total||0), 0);
+  const debtsPaid = (debts || []).reduce((s,d)=>s + (d.paid||0), 0);
+
   return (
     <div className="stagger" style={{ padding:'4px 16px 18px', display:'flex', flexDirection:'column', gap:18 }}>
       <HeroCard hidden={hidden} onToggleHide={onToggleHide} month={month} onPrev={onPrev} onNext={onNext} summary={summary} />
@@ -73,6 +76,25 @@ function Dashboard({ hidden, onToggleHide, onOpenTx, goTab, month, onPrev, onNex
         <window.StatTile icon="piggy"     label="Tabungan"   value={mask(formatRpShort(summary.savings))}  varName="--savings" />
         <window.StatTile icon="receipt"   label="Tagihan Dibayar" value={mask(formatRpShort(summary.billsPaid))} varName="--bills" />
       </div>
+
+      {/* Debt summary */}
+      <window.Card pad={18}>
+        <window.SectionHead title="Ringkasan Utang" />
+        <div style={{ display:'flex', gap:12, marginTop:8 }}>
+          <div style={{ flex:1, padding:12, borderRadius:12, background:'var(--surface)', border:'1px solid var(--border)' }}>
+            <div style={{ fontSize:12.5, color:'var(--text-3)', fontWeight:600 }}>Total Utang</div>
+            <div className="num" style={{ fontSize:16, fontWeight:800, marginTop:6 }}>{hidden ? '••••' : formatRp(debtsTotal)}</div>
+          </div>
+          <div style={{ flex:1, padding:12, borderRadius:12, background:'var(--surface)', border:'1px solid var(--border)' }}>
+            <div style={{ fontSize:12.5, color:'var(--text-3)', fontWeight:600 }}>Terbayar</div>
+            <div className="num" style={{ fontSize:16, fontWeight:800, marginTop:6, color:'var(--income)' }}>{hidden ? '••••' : formatRp(debtsPaid)}</div>
+          </div>
+          <div style={{ flex:1, padding:12, borderRadius:12, background:'var(--surface)', border:'1px solid var(--border)' }}>
+            <div style={{ fontSize:12.5, color:'var(--text-3)', fontWeight:600 }}>Sisa</div>
+            <div className="num" style={{ fontSize:16, fontWeight:800, marginTop:6, color:'var(--spending)' }}>{hidden ? '••••' : formatRp(debtsTotal - debtsPaid)}</div>
+          </div>
+        </div>
+      </window.Card>
 
       {/* Allocation donut */}
       <window.Card pad={18}>
