@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Catat — Aplikasi Keuangan Pribadi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --font: 'Plus Jakarta Sans', -apple-system, system-ui, sans-serif;
+
+    /* Neutrals — soft, professional */
+    --bg: #F4F5F8;
+    --surface: #FFFFFF;
+    --surface-2: #F4F6F9;
+    --surface-3: #EDF0F4;
+    --text: #131722;
+    --text-2: #5B6472;
+    --text-3: #939CAB;
+    --border: #E9ECF2;
+    --border-2: #EEF1F5;
+
+    /* Accent — indigo/violet */
+    --accent: #5B57E8;
+    --accent-600: #4F46E5;
+    --accent-700: #4338CA;
+    --accent-soft: #ECECFD;
+    --accent-grad-a: #6D5DF6;
+    --accent-grad-b: #5B57E8;
+    --accent-grad-c: #8B7CF8;
+
+    /* Semantic */
+    --income: #10B981;       --income-soft: #E6F7F1;
+    --spending: #F43F5E;     --spending-soft: #FDECEF;
+    --bills: #F59E0B;        --bills-soft: #FEF3E2;
+    --savings: #3B82F6;      --savings-soft: #E8F1FE;
+    --goals: #8B5CF6;        --goals-soft: #F1ECFE;
+
+    --shadow-sm: 0 1px 2px rgba(19,23,34,0.05);
+    --shadow-card: 0 1px 3px rgba(19,23,34,0.04), 0 8px 24px -12px rgba(19,23,34,0.10);
+    --shadow-lift: 0 6px 16px -6px rgba(19,23,34,0.14), 0 18px 40px -20px rgba(19,23,34,0.18);
+    --shadow-pop: 0 -8px 40px -8px rgba(19,23,34,0.18);
+  }
+
+  .dark {
+    --bg: #0A0A0D;
+    --surface: #161619;
+    --surface-2: #1E1E23;
+    --surface-3: #26262C;
+    --text: #F4F4F6;
+    --text-2: #A0A3AD;
+    --text-3: #6B6E78;
+    --border: #26262C;
+    --border-2: #2A2A31;
+
+    --accent: #7B73FF;
+    --accent-600: #6D5DF6;
+    --accent-700: #5B57E8;
+    --accent-soft: #221F3D;
+    --accent-grad-a: #6D5DF6;
+    --accent-grad-b: #4F46E5;
+    --accent-grad-c: #8B7CF8;
+
+    --income: #34D399;       --income-soft: #11241D;
+    --spending: #FB7185;     --spending-soft: #2A171C;
+    --bills: #FBBF24;        --bills-soft: #271E10;
+    --savings: #60A5FA;      --savings-soft: #131F30;
+    --goals: #A78BFA;        --goals-soft: #1E1832;
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.6);
+    --shadow-lift: 0 6px 16px -6px rgba(0,0,0,0.5), 0 18px 40px -20px rgba(0,0,0,0.7);
+    --shadow-pop: 0 -8px 40px -8px rgba(0,0,0,0.7);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    background: #1b1d23;
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 28px;
+  }
+  #stage {
+    background:
+      radial-gradient(900px 600px at 20% 0%, #2a2640 0%, transparent 55%),
+      radial-gradient(900px 600px at 100% 100%, #1e2a3a 0%, transparent 55%),
+      #16171d;
+    min-height: 100vh; width: 100%;
+    position: fixed; inset: 0; z-index: -1;
+  }
+  ::-webkit-scrollbar { width: 0; height: 0; }
+  * { scrollbar-width: none; }
+
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+  .app-root {
+    background: var(--bg);
+    color: var(--text);
+    height: 100%;
+    transition: background 0.45s ease, color 0.45s ease;
+    -webkit-font-smoothing: antialiased;
+  }
+  .press { transition: transform 0.12s cubic-bezier(.2,.8,.3,1), box-shadow .2s ease, background .2s ease; }
+  .press:active { transform: scale(0.96); }
+  .lift { transition: transform .22s cubic-bezier(.2,.8,.3,1), box-shadow .22s ease; }
+  @media (hover:hover) { .lift:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); } }
+
+  @keyframes fadeUp { from { transform: translateY(12px); } to { transform: none; } }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @keyframes scaleIn { from { opacity:0; transform: scale(.9); } to { opacity:1; transform:none; } }
+  @keyframes popCheck { 0%{transform:scale(0)} 60%{transform:scale(1.15)} 100%{transform:scale(1)} }
+  @keyframes growBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  @keyframes drawRing { from { stroke-dashoffset: var(--circ); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes floatUp { 0%{transform:translateY(0) scale(1);opacity:1} 100%{transform:translateY(-120px) scale(.4);opacity:0} }
+
+  .stagger > * { animation: fadeUp .5s cubic-bezier(.2,.8,.3,1) both; }
+  .stagger > *:nth-child(1){animation-delay:.02s}
+  .stagger > *:nth-child(2){animation-delay:.07s}
+  .stagger > *:nth-child(3){animation-delay:.12s}
+  .stagger > *:nth-child(4){animation-delay:.17s}
+  .stagger > *:nth-child(5){animation-delay:.22s}
+  .stagger > *:nth-child(6){animation-delay:.27s}
+  .stagger > *:nth-child(7){animation-delay:.32s}
+  .stagger > *:nth-child(8){animation-delay:.37s}
+
+  @media (prefers-reduced-motion: reduce) {
+    *, .stagger > * { animation: none !important; transition: none !important; }
+    .stagger > * { opacity: 1 !important; }
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<script type="text/babel" src="ios-frame.jsx?v=2"></script>
+<script type="text/babel" src="icons.jsx?v=2"></script>
+<script type="text/babel" src="supabase.jsx?v=1"></script>
+<script type="text/babel" src="data.jsx?v=3"></script>
+<script type="text/babel" src="charts.jsx?v=2"></script>
+<script type="text/babel" src="ui.jsx?v=2"></script>
+<script type="text/babel" src="screen-dashboard.jsx?v=3"></script>
+<script type="text/babel" src="screen-transaksi.jsx?v=3"></script>
+<script type="text/babel" src="screen-tambah.jsx?v=3"></script>
+<script type="text/babel" src="screen-anggaran.jsx?v=3"></script>
+<script type="text/babel" src="screen-laporan.jsx?v=3"></script>
+<script type="text/babel" src="app.jsx?v=6"></script>
+</body>
+</html>
