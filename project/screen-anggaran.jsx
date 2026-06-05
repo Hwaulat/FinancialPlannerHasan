@@ -62,9 +62,10 @@ function ReceivableTab({ hidden, budgets, onSetBudget, onUpdateReceivable }) {
 
   function ReceivableItem({ b, index }) {
     const [payment, setPayment] = React.useState('');
-    const paid = b.paid || 0;
-    const remaining = Math.max(0, b.amount - paid);
-    const pct = b.amount > 0 ? Math.round(paid / b.amount * 100) : 0;
+    const paid = Number(b.paid || 0);
+    const total = Number(b.amount || 0);
+    const remaining = Math.max(0, total - paid);
+    const pct = total > 0 ? Math.round(paid / total * 100) : 0;
     const over = pct > 100;
     const col = over ? 'var(--income)' : pct >= 80 ? 'var(--bills)' : 'var(--income)';
 
@@ -91,7 +92,7 @@ function ReceivableTab({ hidden, budgets, onSetBudget, onUpdateReceivable }) {
             const amount = Number(payment);
             if (Number.isNaN(amount) || amount <= 0 || !onUpdateReceivable) return;
             try {
-              const nextPaid = Math.min(paid + amount, b.amount);
+              const nextPaid = Math.min(paid + amount, total);
               await onUpdateReceivable(b.id, nextPaid);
               setPayment('');
               window.UI.toast?.('Nominal terima berhasil disimpan');

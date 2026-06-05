@@ -1,4 +1,4 @@
-// app.jsx — shell: header, bottom tab + FAB, theme, routing
+﻿// app.jsx â€” shell: header, bottom tab + FAB, theme, routing
 
 const { BULAN, formatRp, formatRpShort } = window.DATA;
 const YEAR = 2026;
@@ -108,7 +108,7 @@ function App() {
           window.DB.getGoals(),
         ]);
         setTxs(txData);
-        setBudgets(budgetData);
+        setBudgets(budgetData.map(b => ({ ...b, amount: Number(b.amount), paid: Number(b.paid || 0) })));
         setBills(billData);
         setDebts(debtData);
         setGoals(goalData);
@@ -182,10 +182,11 @@ function App() {
   const handleUpdateReceivable = async (id, paid) => {
     try {
       const budget = budgets.find(b => b.id === id);
-      const currentPaid = budget ? (budget.paid || 0) : 0;
-      const actualAmount = Math.max(0, Math.min(paid, budget ? budget.amount : paid) - currentPaid);
+      const currentPaid = budget ? Number(budget.paid || 0) : 0;
+      const total = budget ? Number(budget.amount || 0) : 0;
+      const actualAmount = Math.max(0, Math.min(paid, total) - currentPaid);
       const saved = await window.DB.updateBudgetPaid(id, paid);
-      setBudgets(prev => prev.map(b => b.id === id ? { ...b, ...saved } : b));
+      setBudgets(prev => prev.map(b => b.id === id ? { ...b, ...saved, amount: Number(saved.amount), paid: Number(saved.paid || 0) } : b));
       if (actualAmount > 0) {
         const tx = {
           title: `Terima Piutang ${budget?.cat || ''}`.trim(),
@@ -236,10 +237,11 @@ function App() {
   const handleSetBudget = async (cat, amount, paid = 0) => {
     try {
       const saved = await window.DB.setBudget(cat, monthKey, amount, paid);
+      const normalizedSaved = { ...saved, amount: Number(saved.amount), paid: Number(saved.paid || 0) };
       setBudgets(prev => {
         const exists = prev.some(b => b.cat === cat && b.month === monthKey);
-        if (exists) return prev.map(b => b.cat === cat && b.month === monthKey ? { ...b, ...saved } : b);
-        return [...prev, saved];
+        if (exists) return prev.map(b => b.cat === cat && b.month === monthKey ? { ...b, ...normalizedSaved } : b);
+        return [...prev, normalizedSaved];
       });
       if (paid > 0) {
         const tx = {
@@ -253,7 +255,7 @@ function App() {
         const savedTx = await window.DB.addTx(tx);
         setTxs(prev => [savedTx, ...prev]);
       }
-      return saved;
+      return normalizedSaved;
     } catch (err) {
       console.error('Gagal menyimpan piutang', err);
       setError(err.message || 'Gagal menyimpan piutang');
@@ -284,7 +286,7 @@ function App() {
   };
   const laporanProps = { hidden, month:monthLabel, onPrev:prevM, onNext:nextM, summary, spendingByCat, recap };
 
-  // fit device to viewport — outer stage is position:fixed + overflow:hidden so
+  // fit device to viewport â€” outer stage is position:fixed + overflow:hidden so
   // the page never grows and innerHeight stays stable.
   const stageRef = React.useRef(null);
   const [scale, setScale] = React.useState(1);
@@ -307,12 +309,12 @@ function App() {
     <IOSDevice dark={dark}>
       <div className={`app-root ${dark?'dark':''}`} style={{ display:'flex', flexDirection:'column', height:'100%', position:'relative' }}>
 
-        {/* ── Header ── */}
+        {/* â”€â”€ Header â”€â”€ */}
         <header style={{ flexShrink:0, paddingTop:54, padding:'54px 16px 12px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
           <div style={{ minWidth:0 }}>
             {tab==='beranda' ? (
               <>
-                <div style={{ fontSize:20, fontWeight:800, color:'var(--text)', letterSpacing:-0.4, display:'flex', alignItems:'center', gap:6 }}>Halo, Hasan <span style={{fontSize:18}}>👋</span></div>
+                <div style={{ fontSize:20, fontWeight:800, color:'var(--text)', letterSpacing:-0.4, display:'flex', alignItems:'center', gap:6 }}>Halo, Hasan <span style={{fontSize:18}}>ðŸ‘‹</span></div>
                 <div style={{ fontSize:12.5, color:'var(--text-3)', fontWeight:500, marginTop:2 }}>{monthFull}</div>
               </>
             ) : (
@@ -320,7 +322,7 @@ function App() {
             )}
           </div>
 
-          {/* right cluster: theme · notif · profile */}
+          {/* right cluster: theme Â· notif Â· profile */}
           <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
             <button onClick={()=>setDark(d=>!d)} className="press" aria-label="Ganti tema" style={hdrBtn}>
               <Icon name={dark?'sun':'moon'} size={19} stroke={2.1} />
@@ -337,7 +339,7 @@ function App() {
           </div>
         </header>
 
-        {/* ── Scrollable screen ── */}
+        {/* â”€â”€ Scrollable screen â”€â”€ */}
         <main ref={scrollRef} style={{ flex:1, overflowY:'auto', overflowX:'hidden' }}>
           <div key={tab} style={{ paddingBottom:96 }}>
             {tab==='beranda'   && <window.Dashboard  {...dashboardProps} />}
@@ -350,7 +352,7 @@ function App() {
           )}
         </main>
 
-        {/* ── Bottom tab bar ── */}
+        {/* â”€â”€ Bottom tab bar â”€â”€ */}
         <nav style={{
           flexShrink:0, position:'relative', display:'flex', alignItems:'flex-end', justifyContent:'space-around',
           padding:'8px 14px 26px', background:'color-mix(in srgb, var(--surface) 88%, transparent)',
@@ -382,7 +384,7 @@ function App() {
           })}
         </nav>
 
-        {/* ── Overlays ── */}
+        {/* â”€â”€ Overlays â”€â”€ */}
         <window.AddSheet open={addOpen} onClose={()=>{ setAddOpen(false); setEditTx(null); }} txs={txs} onSaveTx={handleSaveTx} initial={editTx} />
         <window.TxDetailSheet tx={selTx} onClose={()=>setSelTx(null)} onDelete={handleDeleteTx} onEdit={(tx)=>{ setSelTx(null); setEditTx(tx); setAddOpen(true); }} />
         <NotifSheet open={notifOpen} onClose={()=>setNotifOpen(false)} />
@@ -401,12 +403,12 @@ const hdrBtn = {
   boxShadow:'var(--shadow-sm)',
 };
 
-// ── Notifications ────────────────────────────────────────────
+// â”€â”€ Notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function NotifSheet({ open, onClose }) {
   const items = [
-    { icon:'receipt', tone:'bills', title:'TF Orangtua jatuh tempo', body:'Rp 500.000 · 28 Juni · belum dibayar', t:'2 hari lagi' },
+    { icon:'receipt', tone:'bills', title:'TF Orangtua jatuh tempo', body:'Rp 500.000 Â· 28 Juni Â· belum dibayar', t:'2 hari lagi' },
     { icon:'alert', tone:'spending', title:'Budget Shopping terlampaui', body:'Rp 878.500 dari Rp 700.000', t:'Hari ini' },
-    { icon:'phone', tone:'goals', title:'Yuk lanjut nabung iPhone 15', body:'Baru 10% — sisihkan Rp 1,5jt bulan ini', t:'Kemarin' },
+    { icon:'phone', tone:'goals', title:'Yuk lanjut nabung iPhone 15', body:'Baru 10% â€” sisihkan Rp 1,5jt bulan ini', t:'Kemarin' },
     { icon:'piggy', tone:'savings', title:'Saatnya nabung rutin', body:'Gajian sudah masuk, alokasikan tabungan', t:'1 Jun' },
   ];
   return (
@@ -436,7 +438,7 @@ function NotifSheet({ open, onClose }) {
   );
 }
 
-// ── Profile / Settings ───────────────────────────────────────
+// â”€â”€ Profile / Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ProfileSheet({ open, onClose, dark, setDark, hidden, setHidden }) {
   const Row = ({ icon, tone='--accent', label, sub, right, onClick }) => (
     <button onClick={onClick} className={onClick?'press':''} style={{
@@ -497,10 +499,11 @@ function ProfileSheet({ open, onClose, dark, setDark, hidden, setHidden }) {
         <window.Card pad={0} style={{ overflow:'hidden' }}>
           <Row icon="logout" tone="--spending" label="Keluar" onClick={()=>{}} />
         </window.Card>
-        <div style={{ textAlign:'center', fontSize:11, color:'var(--text-3)', marginTop:20 }}>Catat · v1.0 · Offline-first</div>
+        <div style={{ textAlign:'center', fontSize:11, color:'var(--text-3)', marginTop:20 }}>Catat Â· v1.0 Â· Offline-first</div>
       </div>
     </window.Sheet>
   );
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
