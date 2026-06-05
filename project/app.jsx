@@ -180,8 +180,30 @@ function App() {
   };
 
   const handleUpdateReceivable = async (id, paid) => {
-    await window.DB.updateBudgetPaid(id, paid);
-    setBudgets(prev => prev.map(b => b.id === id ? { ...b, paid } : b));
+    try {
+      const budget = budgets.find(b => b.id === id);
+      const currentPaid = budget ? (budget.paid || 0) : 0;
+      const actualAmount = Math.max(0, Math.min(paid, budget ? budget.amount : paid) - currentPaid);
+      const saved = await window.DB.updateBudgetPaid(id, paid);
+      setBudgets(prev => prev.map(b => b.id === id ? { ...b, ...saved } : b));
+      if (actualAmount > 0) {
+        const tx = {
+          title: `Terima Piutang ${budget?.cat || ''}`.trim(),
+          amount: actualAmount,
+          cat: budget?.cat || 'Piutang',
+          type: 'income',
+          pay: 'Cash',
+          date: new Date().toISOString().slice(0,10),
+        };
+        const savedTx = await window.DB.addTx(tx);
+        setTxs(prev => [savedTx, ...prev]);
+      }
+      return saved;
+    } catch (err) {
+      console.error('Gagal memperbarui piutang', err);
+      setError(err.message || 'Gagal memperbarui piutang');
+      throw err;
+    }
   };
 
   const handleDeleteDebt = async id => {
@@ -219,6 +241,18 @@ function App() {
         if (exists) return prev.map(b => b.cat === cat && b.month === monthKey ? { ...b, ...saved } : b);
         return [...prev, saved];
       });
+      if (paid > 0) {
+        const tx = {
+          title: `Terima Piutang ${cat}`,
+          amount: paid,
+          cat,
+          type: 'income',
+          pay: 'Cash',
+          date: new Date().toISOString().slice(0,10),
+        };
+        const savedTx = await window.DB.addTx(tx);
+        setTxs(prev => [savedTx, ...prev]);
+      }
       return saved;
     } catch (err) {
       console.error('Gagal menyimpan piutang', err);

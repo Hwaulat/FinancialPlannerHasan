@@ -87,12 +87,18 @@ function ReceivableTab({ hidden, budgets, onSetBudget, onUpdateReceivable }) {
         <div style={{ display:'flex', gap:8, marginTop:14, alignItems:'center' }}>
           <input value={payment} onChange={e=>setPayment(e.target.value.replace(/[^0-9]/g,''))} placeholder='Nominal terima'
             style={{ flex:1, height:44, padding:'0 12px', borderRadius:12, border:'1px solid var(--border)', background:'var(--surface-2)', fontFamily:'inherit' }} />
-          <window.Button variant="primary" onClick={() => {
+          <window.Button variant="primary" onClick={async () => {
             const amount = Number(payment);
             if (Number.isNaN(amount) || amount <= 0 || !onUpdateReceivable) return;
-            const nextPaid = Math.min(paid + amount, b.amount);
-            onUpdateReceivable(b.id, nextPaid);
-            setPayment('');
+            try {
+              const nextPaid = Math.min(paid + amount, b.amount);
+              await onUpdateReceivable(b.id, nextPaid);
+              setPayment('');
+              window.UI.toast?.('Nominal terima berhasil disimpan');
+            } catch (err) {
+              console.error('Gagal menyimpan nominal terima', err);
+              window.UI.toast?.('Gagal menyimpan nominal terima');
+            }
           }} style={{ minWidth:120, padding:'11px 14px' }}><Icon name="wallet" size={16} stroke={2.2} />Terima</window.Button>
         </div>
       </window.Card>
