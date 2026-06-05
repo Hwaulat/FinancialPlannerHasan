@@ -172,6 +172,11 @@ function App() {
     }
   };
 
+  const handleUpdateReceivable = async (id, paid) => {
+    await window.DB.updateBudgetPaid(id, paid);
+    setBudgets(prev => prev.map(b => b.id === id ? { ...b, paid } : b));
+  };
+
   const handleDeleteDebt = async id => {
     await window.DB.deleteDebt(id);
     setDebts(prev => prev.filter(d => d.id !== id));
@@ -199,12 +204,12 @@ function App() {
     return saved;
   };
 
-  const handleSetBudget = async (cat, amount) => {
-    await window.DB.setBudget(cat, monthKey, amount);
+  const handleSetBudget = async (cat, amount, paid = 0) => {
+    const saved = await window.DB.setBudget(cat, monthKey, amount, paid);
     setBudgets(prev => {
       const exists = prev.some(b => b.cat === cat);
-      if (exists) return prev.map(b => b.cat === cat ? { ...b, amount } : b);
-      return [...prev, { id: Date.now(), cat, month: monthKey, amount, spent: 0 }];
+      if (exists) return prev.map(b => b.cat === cat ? { ...b, ...saved } : b);
+      return [...prev, saved];
     });
   };
 
@@ -213,7 +218,7 @@ function App() {
   React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [tab]);
 
   const dashboardProps = { hidden, onToggleHide:()=>setHidden(h=>!h), month:monthLabel, onPrev:prevM, onNext:nextM,
-    onOpenTx:setSelTx, goTab, summary, spendingByCat, insights, txs, debts };
+    onOpenTx:setSelTx, goTab, summary, spendingByCat, insights, txs, debts, receivables:budgets };
   const transaksiProps = { hidden, month:monthLabel, onPrev:prevM, onNext:nextM, onOpenTx:setSelTx, openAdd:()=>setAddOpen(true), txs };
   const anggaranProps = { hidden, month:monthLabel, onPrev:prevM, onNext:nextM,
     budgets, bills, debts, goals,
@@ -227,6 +232,7 @@ function App() {
     onDeleteGoal:handleDeleteGoal,
     onAddGoal:handleAddGoal,
     onSetBudget:handleSetBudget,
+    onUpdateReceivable:handleUpdateReceivable,
   };
   const laporanProps = { hidden, month:monthLabel, onPrev:prevM, onNext:nextM, summary, spendingByCat, recap };
 

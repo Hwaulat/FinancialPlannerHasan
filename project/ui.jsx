@@ -192,7 +192,7 @@ function Sheet({ open, onClose, children, height = 'auto', full = false }) {
   if (!open) return null;
   return (
     <div onClick={onClose} style={{
-      position:'absolute', inset:0, zIndex:200, display:'flex', flexDirection:'column', justifyContent:'flex-end',
+      position:'absolute', top:0, left:0, right:0, bottom:96, zIndex:200, display:'flex', flexDirection:'column', justifyContent:'flex-end',
       background:'rgba(8,8,12,0.42)', animation:'fadeIn .22s ease', backdropFilter:'blur(2px)',
     }}>
       <div onClick={e=>e.stopPropagation()} style={{

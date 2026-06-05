@@ -30,9 +30,16 @@ const DB = {
     if (error) throw error;
     return data || [];
   },
-  async setBudget(cat, month, amount) {
-    const { error } = await _db.from('budgets')
-      .upsert({ cat, month, amount }, { onConflict: 'cat,month' });
+  async setBudget(cat, month, amount, paid = 0) {
+    const { data, error } = await _db.from('budgets')
+      .upsert({ cat, month, amount, paid }, { onConflict: 'cat,month' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+  async updateBudgetPaid(id, paid) {
+    const { error } = await _db.from('budgets').update({ paid }).eq('id', id);
     if (error) throw error;
   },
   async deleteBudget(id) {

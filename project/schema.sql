@@ -20,6 +20,7 @@ create table if not exists budgets (
   created_at  timestamptz default now(),
   cat         text not null,
   amount      bigint not null check (amount > 0),
+  paid        bigint default 0,
   month       text not null,   -- format: '2026-06'
   unique (cat, month)
 );

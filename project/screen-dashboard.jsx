@@ -44,7 +44,7 @@ function HeroCard({ hidden, onToggleHide, month, onPrev, onNext, summary }) {
   );
 }
 
-function Dashboard({ hidden, onToggleHide, onOpenTx, goTab, month, onPrev, onNext, summary, spendingByCat, insights, txs, debts }) {
+function Dashboard({ hidden, onToggleHide, onOpenTx, goTab, month, onPrev, onNext, summary, spendingByCat, insights, txs, debts, receivables = [] }) {
   const recent = txs.slice(0, 5);
   const mask = v => hidden ? 'Rp ••••' : v;
 
@@ -61,6 +61,10 @@ function Dashboard({ hidden, onToggleHide, onOpenTx, goTab, month, onPrev, onNex
 
   const debtsTotal = (debts || []).reduce((s,d)=>s + (d.total||0), 0);
   const debtsPaid = (debts || []).reduce((s,d)=>s + (d.paid||0), 0);
+  const receivableTotal = (receivables || []).reduce((s,r)=>s + (r.amount||0), 0);
+  const receivablePaid = (receivables || []).reduce((s,r)=>s + (r.paid||0), 0);
+  const receivableRemaining = receivableTotal - receivablePaid;
+  const unpaidReceivables = (receivables || []).filter(r => (r.amount || 0) - (r.paid||0) > 0);
 
   return (
     <div className="stagger" style={{ padding:'4px 16px 18px', display:'flex', flexDirection:'column', gap:18 }}>
@@ -90,6 +94,42 @@ function Dashboard({ hidden, onToggleHide, onOpenTx, goTab, month, onPrev, onNex
             <div style={{ fontSize:12.5, color:'var(--text-3)', fontWeight:600 }}>Sisa</div>
             <div className="num" style={{ fontSize:16, fontWeight:800, marginTop:6, color:'var(--spending)' }}>{hidden ? '••••' : formatRp(debtsTotal - debtsPaid)}</div>
           </div>
+        </div>
+      </window.Card>
+
+      <window.Card pad={18}>
+        <window.SectionHead title="Ringkasan Piutang" />
+        <div style={{ display:'flex', gap:12, marginTop:8 }}>
+          <div style={{ flex:1, padding:12, borderRadius:12, background:'var(--surface)', border:'1px solid var(--border)' }}>
+            <div style={{ fontSize:12.5, color:'var(--text-3)', fontWeight:600 }}>Total Piutang</div>
+            <div className="num" style={{ fontSize:16, fontWeight:800, marginTop:6 }}>{hidden ? '••••' : formatRp(receivableTotal)}</div>
+          </div>
+          <div style={{ flex:1, padding:12, borderRadius:12, background:'var(--surface)', border:'1px solid var(--border)' }}>
+            <div style={{ fontSize:12.5, color:'var(--text-3)', fontWeight:600 }}>Sudah Diterima</div>
+            <div className="num" style={{ fontSize:16, fontWeight:800, marginTop:6, color:'var(--income)' }}>{hidden ? '••••' : formatRp(receivablePaid)}</div>
+          </div>
+          <div style={{ flex:1, padding:12, borderRadius:12, background:'var(--surface)', border:'1px solid var(--border)' }}>
+            <div style={{ fontSize:12.5, color:'var(--text-3)', fontWeight:600 }}>Sisa Terutang</div>
+            <div className="num" style={{ fontSize:16, fontWeight:800, marginTop:6, color:'var(--spending)' }}>{hidden ? '••••' : formatRp(receivableRemaining)}</div>
+          </div>
+        </div>
+        <div style={{ marginTop:16 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:'var(--text)', marginBottom:10 }}>Piutang Belum Lunas</div>
+          {unpaidReceivables.length === 0 ? (
+            <div style={{ fontSize:12.5, color:'var(--text-3)' }}>Semua piutang sudah lunas.</div>
+          ) : (
+            <div style={{ display:'grid', gap:10 }}>
+              {unpaidReceivables.slice(0,4).map((r,i)=>(
+                <div key={r.id||i} style={{ display:'flex', justifyContent:'space-between', gap:8, padding:'12px', borderRadius:14, background:'var(--surface-2)', border:'1px solid var(--border)' }}>
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>{r.cat}</div>
+                    <div style={{ fontSize:12, color:'var(--text-3)', marginTop:4 }}>Sisa {hidden ? '••••' : formatRp((r.amount||0)-(r.paid||0))}</div>
+                  </div>
+                  <div style={{ color:'var(--spending)', fontWeight:700, fontSize:13, whiteSpace:'nowrap' }}>{hidden ? '••••' : `${Math.round(((r.paid||0)/(r.amount||1))*100)}%`}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </window.Card>
 

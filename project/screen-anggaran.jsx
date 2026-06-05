@@ -5,14 +5,15 @@ const { ProgressBar, Ring } = window.Charts;
 
 function Anggaran({ hidden, budgets = [], bills = [], debts = [], goals = [],
   onToggleBill, onDeleteBill, onAddBill, onSetBudget,
-  onAddDebt, onUpdateDebt, onDeleteDebt, onAddGoal, onUpdateGoal, onDeleteGoal }) {
+  onAddDebt, onUpdateDebt, onDeleteDebt, onAddGoal, onUpdateGoal, onDeleteGoal,
+  onUpdateReceivable }) {
   const [tab, setTab] = React.useState('receivable');
   return (
     <div style={{ padding:'4px 16px 18px', display:'flex', flexDirection:'column', gap:16 }}>
       <window.Segmented
         items={[{key:'receivable',label:'Piutang'},{key:'debt',label:'Utang'},{key:'goals',label:'Goals'}]}
         value={tab} onChange={setTab} />
-      {tab==='receivable' && <ReceivableTab hidden={hidden} budgets={budgets} onSetBudget={onSetBudget} />}
+      {tab==='receivable' && <ReceivableTab hidden={hidden} budgets={budgets} onSetBudget={onSetBudget} onUpdateReceivable={onUpdateReceivable} />}
       {tab==='debt'   && <DebtTab hidden={hidden} debts={debts} onAddDebt={onAddDebt} onUpdateDebt={onUpdateDebt} onDeleteDebt={onDeleteDebt} />}
       {tab==='goals'  && <GoalsTab hidden={hidden} goals={goals} onAddGoal={onAddGoal} onUpdateGoal={onUpdateGoal} onDeleteGoal={onDeleteGoal} />}
     </div>
@@ -32,9 +33,9 @@ function SummaryStrip({ items }) {
   );
 }
 
-function ReceivableTab({ hidden, budgets, onSetBudget }) {
+function ReceivableTab({ hidden, budgets, onSetBudget, onUpdateReceivable }) {
   const totalB = budgets.reduce((s,b)=>s+b.amount,0);
-  const totalS = budgets.reduce((s,b)=>s+b.spent||0,0);
+  const totalS = budgets.reduce((s,b)=>s+(b.paid||0),0);
   const m = v => hidden ? '••••' : v;
 
   const handleAddReceivable = () => {
@@ -44,9 +45,52 @@ function ReceivableTab({ hidden, budgets, onSetBudget }) {
       const amountStr = await window.UI.prompt('Jumlah hutang (angka)');
       if (amountStr === null) return;
       const amount = Number(amountStr);
-      if (cat && !Number.isNaN(amount) && onSetBudget) onSetBudget(cat, amount);
+      if (Number.isNaN(amount) || amount <= 0) return;
+      const paidStr = await window.UI.prompt('Sudah dibayar oleh peminjam (angka)', { default: '0' });
+      if (paidStr === null) return;
+      const paid = Number(paidStr) || 0;
+      if (cat && onSetBudget) onSetBudget(cat, amount, Math.min(paid, amount));
     })();
   };
+
+  function ReceivableItem({ b, index }) {
+    const [payment, setPayment] = React.useState('');
+    const paid = b.paid || 0;
+    const remaining = Math.max(0, b.amount - paid);
+    const pct = b.amount > 0 ? Math.round(paid / b.amount * 100) : 0;
+    const over = pct > 100;
+    const col = over ? 'var(--income)' : pct >= 80 ? 'var(--bills)' : 'var(--income)';
+
+    return (
+      <window.Card key={b.id || `${b.cat}-${index}`} pad={15} className="lift">
+        <div style={{ display:'flex', alignItems:'center', gap:11, marginBottom:11 }}>
+          <window.CatIcon cat={b.cat} size={38} />
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:14, fontWeight:700, color:'var(--text)' }}>{b.cat}</div>
+            <div className="num" style={{ fontSize:12, color:'var(--text-3)', marginTop:2 }}>
+              {m(formatRp(paid))} / {m(formatRp(b.amount))}
+            </div>
+          </div>
+          <div style={{ fontSize:13, fontWeight:800, color:col }}>{pct}%</div>
+        </div>
+        <ProgressBar pct={pct} color={col} delay={index*0.05} />
+        <div style={{ marginTop:8, fontSize:11.5, fontWeight:600, color: over?'var(--income)':'var(--text-3)' }}>
+          {over ? `Lebih terbayar ${m(formatRp(paid-b.amount))}` : `Sisa terutang ${m(formatRp(remaining))}`}
+        </div>
+        <div style={{ display:'flex', gap:8, marginTop:14, alignItems:'center' }}>
+          <input value={payment} onChange={e=>setPayment(e.target.value.replace(/[^0-9]/g,''))} placeholder='Nominal terima'
+            style={{ flex:1, height:44, padding:'0 12px', borderRadius:12, border:'1px solid var(--border)', background:'var(--surface-2)', fontFamily:'inherit' }} />
+          <window.Button variant="primary" onClick={() => {
+            const amount = Number(payment);
+            if (Number.isNaN(amount) || amount <= 0 || !onUpdateReceivable) return;
+            const nextPaid = Math.min(paid + amount, b.amount);
+            onUpdateReceivable(b.id, nextPaid);
+            setPayment('');
+          }} style={{ minWidth:120, padding:'11px 14px' }}><Icon name="wallet" size={16} stroke={2.2} />Terima</window.Button>
+        </div>
+      </window.Card>
+    );
+  }
 
   return (
     <div className="stagger" style={{ display:'flex', flexDirection:'column', gap:14 }}>
@@ -55,30 +99,7 @@ function ReceivableTab({ hidden, budgets, onSetBudget }) {
         { label:'Diterima', value:m(formatRpShort(totalS)), color: totalS>totalB?'var(--spending)':'var(--text)' },
         { label:'Sisa Terutang', value:m(formatRpShort(totalB-totalS)), color:'var(--income)' },
       ]} />
-      {budgets.map((b,i) => {
-        const spent = b.spent || 0;
-        const pct = b.amount > 0 ? Math.round(spent/b.amount*100) : 0;
-        const over = pct > 100;
-        const col = over ? 'var(--spending)' : pct >= 80 ? 'var(--bills)' : 'var(--income)';
-        return (
-          <window.Card key={`${b.cat}-${b.id||i}`} pad={15} className="lift">
-            <div style={{ display:'flex', alignItems:'center', gap:11, marginBottom:11 }}>
-              <window.CatIcon cat={b.cat} size={38} />
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:14, fontWeight:700, color:'var(--text)' }}>{b.cat}</div>
-                <div className="num" style={{ fontSize:12, color:'var(--text-3)', marginTop:2 }}>
-                  {m(formatRp(spent))} / {m(formatRp(b.amount))}
-                </div>
-              </div>
-              <div style={{ fontSize:13, fontWeight:800, color:col }}>{pct}%</div>
-            </div>
-            <ProgressBar pct={pct} color={col} delay={i*0.05} />
-            <div style={{ marginTop:8, fontSize:11.5, fontWeight:600, color: over?'var(--spending)':'var(--text-3)' }}>
-              {over ? `Lebih terbayar ${m(formatRp(spent-b.amount))}` : `Sisa terutang ${m(formatRp(b.amount-spent))}`}
-            </div>
-          </window.Card>
-        );
-      })}
+      {budgets.map((b,i) => <ReceivableItem key={b.id || `${b.cat}-${i}`} b={b} index={i} />)}
       <window.Button variant="ghost" onClick={handleAddReceivable} style={{ width:'100%', justifyContent:'center' }}><Icon name="plus" size={18} stroke={2.4} />Tambah Piutang</window.Button>
     </div>
   );
