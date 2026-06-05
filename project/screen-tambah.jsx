@@ -17,17 +17,26 @@ function catsForType(type) {
   return Object.entries(CATS).filter(([,m]) => m.type === want).map(([name,m]) => ({ name, ...m }));
 }
 
-function AddSheet({ open, onClose, txs = [], onSaveTx }) {
-  const [type, setType] = React.useState('spending');
+function AddSheet({ open, onClose, txs = [], onSaveTx, initial = null }) {
+  const [type, setType] = React.useState(initial && initial.type ? initial.type : 'spending');
   const [amount, setAmount] = React.useState(0);      // integer rupiah
   const [cat, setCat] = React.useState(null);
   const [name, setName] = React.useState('');
   const [pay, setPay] = React.useState('E-wallet');
   const [date, setDate] = React.useState(new Date().toISOString().slice(0,10));
   const [saved, setSaved] = React.useState(false);
-
-  React.useEffect(() => { if (open) { reset(); } }, [open]);
+  React.useEffect(() => { if (open) { reset(); } }, [open, initial]);
   function reset(keepType) {
+    if (initial && open) {
+      setType(initial.type || 'spending');
+      setAmount(initial.amount || 0);
+      setCat(initial.cat || null);
+      setName(initial.title || '');
+      setPay(initial.pay || 'E-wallet');
+      setDate(initial.date || new Date().toISOString().slice(0,10));
+      setSaved(false);
+      return;
+    }
     setAmount(0); setCat(null); setName(''); setDate(new Date().toISOString().slice(0,10)); setSaved(false);
     if (!keepType) setType('spending');
   }
@@ -59,6 +68,7 @@ function AddSheet({ open, onClose, txs = [], onSaveTx }) {
       pay,
       date,
     };
+    if (initial && initial.id) tx.id = initial.id;
     try {
       const saved = await onSaveTx(tx);
       setSaved(true);
@@ -82,7 +92,7 @@ function AddSheet({ open, onClose, txs = [], onSaveTx }) {
       {/* header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 18px 6px', flexShrink:0 }}>
         <window.IconButton icon="x" ariaLabel="Close" onClick={onClose} />
-        <div style={{ fontSize:15, fontWeight:700, color:'var(--text)' }}>Tambah Transaksi</div>
+        <div style={{ fontSize:15, fontWeight:700, color:'var(--text)' }}>{(initial && initial.id) ? 'Edit Transaksi' : 'Tambah Transaksi'}</div>
         <div style={{ width:36 }} />
       </div>
 
@@ -198,11 +208,13 @@ function AddSheet({ open, onClose, txs = [], onSaveTx }) {
         {/* save buttons */}
         <div style={{ padding:'8px 16px 22px', display:'flex', flexDirection:'column', gap:9 }}>
           <window.Button disabled={!canSave} onClick={()=>doSave(false)} style={{ width:'100%', padding:'16px', borderRadius:16, background: canSave ? accent : 'var(--surface-3)', opacity: canSave?1:0.7, boxShadow: canSave?'var(--shadow-lift)':'none' }}>
-            Simpan
+            {(initial && initial.id) ? 'Simpan Perubahan' : 'Simpan'}
           </window.Button>
-          <window.Button variant="outline" disabled={!canSave} onClick={()=>doSave(true)} style={{ width:'100%', padding:'13px', borderRadius:16, color: canSave?accent:'var(--text-3)', borderColor: canSave?accent:'var(--text-3)' }}>
-            Simpan & Tambah Lagi
-          </window.Button>
+          {!(initial && initial.id) && (
+            <window.Button variant="outline" disabled={!canSave} onClick={()=>doSave(true)} style={{ width:'100%', padding:'13px', borderRadius:16, color: canSave?accent:'var(--text-3)', borderColor: canSave?accent:'var(--text-3)' }}>
+              Simpan & Tambah Lagi
+            </window.Button>
+          )}
         </div>
       </div>
 

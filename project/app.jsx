@@ -78,6 +78,7 @@ function App() {
   const [hidden, setHidden] = React.useState(false);
   const [selTx, setSelTx] = React.useState(null);
   const [addOpen, setAddOpen] = React.useState(false);
+  const [editTx, setEditTx] = React.useState(null);
   const [notifOpen, setNotifOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
   const [monthIdx, setMonthIdx] = React.useState(5); // Juni
@@ -125,9 +126,15 @@ function App() {
   const recap = React.useMemo(() => buildRecap(monthIdx, txs), [monthIdx, txs]);
 
   const handleSaveTx = async tx => {
-    const saved = await window.DB.addTx(tx);
-    setTxs(prev => [saved, ...prev]);
-    return saved;
+    if (tx.id) {
+      const saved = await window.DB.updateTx(tx.id, tx);
+      setTxs(prev => prev.map(t => t.id === saved.id ? saved : t));
+      return saved;
+    } else {
+      const saved = await window.DB.addTx(tx);
+      setTxs(prev => [saved, ...prev]);
+      return saved;
+    }
   };
 
   const handleDeleteTx = async id => {
@@ -205,12 +212,19 @@ function App() {
   };
 
   const handleSetBudget = async (cat, amount, paid = 0) => {
-    const saved = await window.DB.setBudget(cat, monthKey, amount, paid);
-    setBudgets(prev => {
-      const exists = prev.some(b => b.cat === cat);
-      if (exists) return prev.map(b => b.cat === cat ? { ...b, ...saved } : b);
-      return [...prev, saved];
-    });
+    try {
+      const saved = await window.DB.setBudget(cat, monthKey, amount, paid);
+      setBudgets(prev => {
+        const exists = prev.some(b => b.cat === cat && b.month === monthKey);
+        if (exists) return prev.map(b => b.cat === cat && b.month === monthKey ? { ...b, ...saved } : b);
+        return [...prev, saved];
+      });
+      return saved;
+    } catch (err) {
+      console.error('Gagal menyimpan piutang', err);
+      setError(err.message || 'Gagal menyimpan piutang');
+      throw err;
+    }
   };
 
   const goTab = k => { if (k==='add') setAddOpen(true); else setTab(k); };
@@ -335,8 +349,8 @@ function App() {
         </nav>
 
         {/* ── Overlays ── */}
-        <window.AddSheet open={addOpen} onClose={()=>setAddOpen(false)} txs={txs} onSaveTx={handleSaveTx} />
-        <window.TxDetailSheet tx={selTx} onClose={()=>setSelTx(null)} onDelete={handleDeleteTx} />
+        <window.AddSheet open={addOpen} onClose={()=>{ setAddOpen(false); setEditTx(null); }} txs={txs} onSaveTx={handleSaveTx} initial={editTx} />
+        <window.TxDetailSheet tx={selTx} onClose={()=>setSelTx(null)} onDelete={handleDeleteTx} onEdit={(tx)=>{ setSelTx(null); setEditTx(tx); setAddOpen(true); }} />
         <NotifSheet open={notifOpen} onClose={()=>setNotifOpen(false)} />
         <ProfileSheet open={profileOpen} onClose={()=>setProfileOpen(false)}
           dark={dark} setDark={setDark} hidden={hidden} setHidden={setHidden} />

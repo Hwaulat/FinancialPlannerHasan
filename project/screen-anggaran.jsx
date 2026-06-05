@@ -49,7 +49,14 @@ function ReceivableTab({ hidden, budgets, onSetBudget, onUpdateReceivable }) {
       const paidStr = await window.UI.prompt('Sudah dibayar oleh peminjam (angka)', { default: '0' });
       if (paidStr === null) return;
       const paid = Number(paidStr) || 0;
-      if (cat && onSetBudget) onSetBudget(cat, amount, Math.min(paid, amount));
+      if (cat && onSetBudget) {
+        try {
+          await onSetBudget(cat, amount, Math.min(paid, amount));
+        } catch (err) {
+          console.error('Gagal menambah piutang', err);
+          window.UI.toast && window.UI.toast('Gagal menambah piutang');
+        }
+      }
     })();
   };
 

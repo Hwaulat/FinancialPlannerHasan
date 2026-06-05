@@ -19,6 +19,11 @@ const DB = {
     if (error) throw error;
     return data;
   },
+  async updateTx(id, tx) {
+    const { data, error } = await _db.from('transactions').update(tx).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  },
   async deleteTx(id) {
     const { error } = await _db.from('transactions').delete().eq('id', id);
     if (error) throw error;
@@ -31,16 +36,34 @@ const DB = {
     return data || [];
   },
   async setBudget(cat, month, amount, paid = 0) {
-    const { data, error } = await _db.from('budgets')
-      .upsert({ cat, month, amount, paid }, { onConflict: 'cat,month' })
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    try {
+      const res = await _db.from('budgets')
+        .upsert({ cat, month, amount, paid }, { onConflict: 'cat,month' })
+        .select();
+      if (res.error) throw res.error;
+      // supabase may return an array for upsert; normalize to single object
+      const data = Array.isArray(res.data) ? res.data[0] : res.data;
+      return data;
+    } catch (err) {
+      const msg = String(err.message || err);
+      if (msg.includes("Could not find the 'paid' column") || msg.includes('column "paid" does not exist')) {
+        throw new Error("Database schema missing 'paid' column on 'budgets'. Run the migration: open project/schema.sql and apply it to your Supabase DB (or run ./run_schema.ps1 with SUPABASE_DB_URL).");
+      }
+      throw err;
+    }
   },
   async updateBudgetPaid(id, paid) {
-    const { error } = await _db.from('budgets').update({ paid }).eq('id', id);
-    if (error) throw error;
+    try {
+      const { data, error } = await _db.from('budgets').update({ paid }).eq('id', id).select();
+      if (error) throw error;
+      return Array.isArray(data) ? data[0] : data;
+    } catch (err) {
+      const msg = String(err.message || err);
+      if (msg.includes("Could not find the 'paid' column") || msg.includes('column "paid" does not exist')) {
+        throw new Error("Database schema missing 'paid' column on 'budgets'. Run the migration: open project/schema.sql and apply it to your Supabase DB (or run ./run_schema.ps1 with SUPABASE_DB_URL).");
+      }
+      throw err;
+    }
   },
   async deleteBudget(id) {
     const { error } = await _db.from('budgets').delete().eq('id', id);

@@ -99,7 +99,7 @@ function Transaksi({ hidden, onOpenTx, month, onPrev, onNext, txs }) {
   );
 }
 
-function TxDetailSheet({ tx, onClose, onDelete }) {
+function TxDetailSheet({ tx, onClose, onDelete, onEdit }) {
   if (!tx) return null;
   const income = tx.type === 'income';
   return (
@@ -129,7 +129,7 @@ function TxDetailSheet({ tx, onClose, onDelete }) {
         </div>
 
         <div style={{ display:'flex', gap:11, marginTop:18 }}>
-          <window.Button variant="outline" style={{ flex:1, justifyContent:'center' }}><Icon name="pencil" size={17} stroke={2.2} />Edit</window.Button>
+          <window.Button variant="outline" style={{ flex:1, justifyContent:'center' }} onClick={() => { onEdit?.(tx); onClose(); }}><Icon name="pencil" size={17} stroke={2.2} />Edit</window.Button>
           <window.Button style={{ flex:1, justifyContent:'center', background:'var(--spending-soft)', color:'var(--spending)', border:'none' }} onClick={() => { onDelete?.(tx.id); onClose(); }}><Icon name="trash" size={17} stroke={2.2} />Hapus</window.Button>
         </div>
       </div>
