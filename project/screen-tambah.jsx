@@ -23,11 +23,12 @@ function AddSheet({ open, onClose, txs = [], onSaveTx }) {
   const [cat, setCat] = React.useState(null);
   const [name, setName] = React.useState('');
   const [pay, setPay] = React.useState('E-wallet');
+  const [date, setDate] = React.useState(new Date().toISOString().slice(0,10));
   const [saved, setSaved] = React.useState(false);
 
   React.useEffect(() => { if (open) { reset(); } }, [open]);
   function reset(keepType) {
-    setAmount(0); setCat(null); setName(''); setSaved(false);
+    setAmount(0); setCat(null); setName(''); setDate(new Date().toISOString().slice(0,10)); setSaved(false);
     if (!keepType) setType('spending');
   }
 
@@ -56,7 +57,7 @@ function AddSheet({ open, onClose, txs = [], onSaveTx }) {
       cat,
       type,
       pay,
-      date: new Date().toISOString().slice(0,10),
+      date,
     };
     try {
       const saved = await onSaveTx(tx);
@@ -177,7 +178,8 @@ function AddSheet({ open, onClose, txs = [], onSaveTx }) {
           <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:13, background:'var(--surface-2)', border:'1px solid var(--border)' }}>
             <Icon name="calendar" size={18} color="var(--text-3)" stroke={2} />
             <span style={{ fontSize:13.5, color:'var(--text-2)', fontWeight:600 }}>Tanggal</span>
-            <span style={{ marginLeft:'auto', fontSize:13.5, fontWeight:700, color:'var(--text)' }}>4 Juni 2026</span>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              style={{ marginLeft:'auto', border:'none', background:'transparent', color:'var(--text)', fontSize:13.5, fontWeight:700, outline:'none', textAlign:'right' }} />
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-// screen-anggaran.jsx — Budget · Tagihan · Utang · Goals
+// screen-anggaran.jsx — Piutang · Tagihan · Utang · Goals
 
 const { formatRp, formatRpShort, catMeta } = window.DATA;
 const { ProgressBar, Ring } = window.Charts;
@@ -6,13 +6,13 @@ const { ProgressBar, Ring } = window.Charts;
 function Anggaran({ hidden, budgets = [], bills = [], debts = [], goals = [],
   onToggleBill, onDeleteBill, onAddBill, onSetBudget,
   onAddDebt, onUpdateDebt, onDeleteDebt, onAddGoal, onUpdateGoal, onDeleteGoal }) {
-  const [tab, setTab] = React.useState('budget');
+  const [tab, setTab] = React.useState('receivable');
   return (
     <div style={{ padding:'4px 16px 18px', display:'flex', flexDirection:'column', gap:16 }}>
       <window.Segmented
-        items={[{key:'budget',label:'Budget'},{key:'debt',label:'Utang'},{key:'goals',label:'Goals'}]}
+        items={[{key:'receivable',label:'Piutang'},{key:'debt',label:'Utang'},{key:'goals',label:'Goals'}]}
         value={tab} onChange={setTab} />
-      {tab==='budget' && <BudgetTab hidden={hidden} budgets={budgets} onSetBudget={onSetBudget} />}
+      {tab==='receivable' && <ReceivableTab hidden={hidden} budgets={budgets} onSetBudget={onSetBudget} />}
       {tab==='debt'   && <DebtTab hidden={hidden} debts={debts} onAddDebt={onAddDebt} onUpdateDebt={onUpdateDebt} onDeleteDebt={onDeleteDebt} />}
       {tab==='goals'  && <GoalsTab hidden={hidden} goals={goals} onAddGoal={onAddGoal} onUpdateGoal={onUpdateGoal} onDeleteGoal={onDeleteGoal} />}
     </div>
@@ -32,16 +32,16 @@ function SummaryStrip({ items }) {
   );
 }
 
-function BudgetTab({ hidden, budgets, onSetBudget }) {
+function ReceivableTab({ hidden, budgets, onSetBudget }) {
   const totalB = budgets.reduce((s,b)=>s+b.amount,0);
   const totalS = budgets.reduce((s,b)=>s+b.spent||0,0);
   const m = v => hidden ? '••••' : v;
 
-  const handleBudget = () => {
+  const handleAddReceivable = () => {
     (async () => {
-      const cat = await window.UI.prompt('Kategori budget');
+      const cat = await window.UI.prompt('Nama orang yang hutang ke kita');
       if (cat === null) return;
-      const amountStr = await window.UI.prompt('Jumlah budget (angka)');
+      const amountStr = await window.UI.prompt('Jumlah hutang (angka)');
       if (amountStr === null) return;
       const amount = Number(amountStr);
       if (cat && !Number.isNaN(amount) && onSetBudget) onSetBudget(cat, amount);
@@ -51,9 +51,9 @@ function BudgetTab({ hidden, budgets, onSetBudget }) {
   return (
     <div className="stagger" style={{ display:'flex', flexDirection:'column', gap:14 }}>
       <SummaryStrip items={[
-        { label:'Total Budget', value:m(formatRpShort(totalB)) },
-        { label:'Terpakai', value:m(formatRpShort(totalS)), color: totalS>totalB?'var(--spending)':'var(--text)' },
-        { label:'Sisa', value:m(formatRpShort(totalB-totalS)), color:'var(--income)' },
+        { label:'Total Piutang', value:m(formatRpShort(totalB)) },
+        { label:'Diterima', value:m(formatRpShort(totalS)), color: totalS>totalB?'var(--spending)':'var(--text)' },
+        { label:'Sisa Terutang', value:m(formatRpShort(totalB-totalS)), color:'var(--income)' },
       ]} />
       {budgets.map((b,i) => {
         const spent = b.spent || 0;
@@ -74,12 +74,12 @@ function BudgetTab({ hidden, budgets, onSetBudget }) {
             </div>
             <ProgressBar pct={pct} color={col} delay={i*0.05} />
             <div style={{ marginTop:8, fontSize:11.5, fontWeight:600, color: over?'var(--spending)':'var(--text-3)' }}>
-              {over ? `Lewat ${m(formatRp(spent-b.amount))}` : `Sisa ${m(formatRp(b.amount-spent))}`}
+              {over ? `Lebih terbayar ${m(formatRp(spent-b.amount))}` : `Sisa terutang ${m(formatRp(b.amount-spent))}`}
             </div>
           </window.Card>
         );
       })}
-      <window.Button variant="ghost" onClick={handleBudget} style={{ width:'100%', justifyContent:'center' }}><Icon name="settings" size={18} stroke={2.2} />Atur Budget</window.Button>
+      <window.Button variant="ghost" onClick={handleAddReceivable} style={{ width:'100%', justifyContent:'center' }}><Icon name="plus" size={18} stroke={2.4} />Tambah Piutang</window.Button>
     </div>
   );
 }
