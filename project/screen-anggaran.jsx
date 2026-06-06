@@ -6,14 +6,14 @@ const { ProgressBar, Ring } = window.Charts;
 function Anggaran({ hidden, budgets = [], bills = [], debts = [], goals = [],
   onToggleBill, onDeleteBill, onAddBill, onSetBudget,
   onAddDebt, onUpdateDebt, onDeleteDebt, onAddGoal, onUpdateGoal, onDeleteGoal,
-  onUpdateReceivable }) {
+  onUpdateReceivable, onDeleteReceivable }) {
   const [tab, setTab] = React.useState('receivable');
   return (
     <div style={{ padding:'4px 16px 18px', display:'flex', flexDirection:'column', gap:16 }}>
       <window.Segmented
         items={[{key:'receivable',label:'Piutang'},{key:'debt',label:'Utang'},{key:'goals',label:'Goals'}]}
         value={tab} onChange={setTab} />
-      {tab==='receivable' && <ReceivableTab hidden={hidden} budgets={budgets} onSetBudget={onSetBudget} onUpdateReceivable={onUpdateReceivable} />}
+      {tab==='receivable' && <ReceivableTab hidden={hidden} budgets={budgets} onSetBudget={onSetBudget} onUpdateReceivable={onUpdateReceivable} onDeleteReceivable={onDeleteReceivable} />}
       {tab==='debt'   && <DebtTab hidden={hidden} debts={debts} onAddDebt={onAddDebt} onUpdateDebt={onUpdateDebt} onDeleteDebt={onDeleteDebt} />}
       {tab==='goals'  && <GoalsTab hidden={hidden} goals={goals} onAddGoal={onAddGoal} onUpdateGoal={onUpdateGoal} onDeleteGoal={onDeleteGoal} />}
     </div>
@@ -33,7 +33,7 @@ function SummaryStrip({ items }) {
   );
 }
 
-function ReceivableTab({ hidden, budgets, onSetBudget, onUpdateReceivable }) {
+function ReceivableTab({ hidden, budgets, onSetBudget, onUpdateReceivable, onDeleteReceivable }) {
   const totalB = budgets.reduce((s,b)=>s+b.amount,0);
   const totalS = budgets.reduce((s,b)=>s+(b.paid||0),0);
   const m = v => hidden ? '••••' : v;
@@ -101,6 +101,7 @@ function ReceivableTab({ hidden, budgets, onSetBudget, onUpdateReceivable }) {
               window.UI.toast?.('Gagal menyimpan nominal terima');
             }
           }} style={{ minWidth:120, padding:'11px 14px' }}><Icon name="wallet" size={16} stroke={2.2} />Terima</window.Button>
+          <window.IconButton onClick={()=>onDeleteReceivable?.(b.id)} icon="trash" ariaLabel="Hapus Piutang" style={{ background:'var(--spending-soft)', color:'var(--spending)' }} />
         </div>
       </window.Card>
     );

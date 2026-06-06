@@ -234,6 +234,11 @@ function App() {
     return saved;
   };
 
+  const handleDeleteReceivable = async id => {
+    await window.DB.deleteBudget(id);
+    setBudgets(prev => prev.filter(b => b.id !== id));
+  };
+
   const handleSetBudget = async (cat, amount, paid = 0) => {
     try {
       const saved = await window.DB.setBudget(cat, monthKey, amount, paid);
@@ -283,6 +288,7 @@ function App() {
     onAddGoal:handleAddGoal,
     onSetBudget:handleSetBudget,
     onUpdateReceivable:handleUpdateReceivable,
+    onDeleteReceivable:handleDeleteReceivable,
   };
   const laporanProps = { hidden, month:monthLabel, onPrev:prevM, onNext:nextM, summary, spendingByCat, recap };
 
