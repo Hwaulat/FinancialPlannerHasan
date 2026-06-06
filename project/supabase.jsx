@@ -37,12 +37,11 @@ const DB = {
   },
   async setBudget(cat, month, amount, paid = 0) {
     try {
-      const res = await _db.from('budgets')
+      const { data, error } = await _db.from('budgets')
         .upsert({ cat, month, amount, paid }, { onConflict: 'cat,month' })
-        .select();
-      if (res.error) throw res.error;
-      // supabase may return an array for upsert; normalize to single object
-      const data = Array.isArray(res.data) ? res.data[0] : res.data;
+        .select()
+        .single();
+      if (error) throw error;
       return data;
     } catch (err) {
       const msg = String(err.message || err);
@@ -54,9 +53,9 @@ const DB = {
   },
   async updateBudgetPaid(id, paid) {
     try {
-      const { data, error } = await _db.from('budgets').update({ paid }).eq('id', id).select();
+      const { data, error } = await _db.from('budgets').update({ paid }).eq('id', id).select().single();
       if (error) throw error;
-      return Array.isArray(data) ? data[0] : data;
+      return data;
     } catch (err) {
       const msg = String(err.message || err);
       if (msg.includes("Could not find the 'paid' column") || msg.includes('column "paid" does not exist')) {
